@@ -294,6 +294,10 @@ export default function SettlementPage() {
             )}
           </div>
         )}
+
+        <p className="text-center text-xs text-zinc-400 pb-2">
+          超過 14 天未開啟記帳本，資料將自動刪除
+        </p>
       </div>
     </div>
   )

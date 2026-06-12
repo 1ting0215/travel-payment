@@ -157,7 +157,7 @@ export default function LandingPage() {
         </Card>
 
         <p className="text-center text-xs text-zinc-400 mt-6">
-          記帳本將於建立後 3 個月自動到期
+          超過 14 天未開啟記帳本，資料將自動刪除
         </p>
       </div>
     </div>

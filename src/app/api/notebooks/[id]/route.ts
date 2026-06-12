@@ -16,6 +16,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Notebook not found' }, { status: 404 })
     }
 
+    // Update last_accessed_at (fire-and-forget, don't block response)
+    supabase.from('tp_notebooks').update({ last_accessed_at: new Date().toISOString() }).eq('id', id).then(() => {})
+
     return NextResponse.json({
       notebook: notebookRes.data,
       members: membersRes.data ?? [],

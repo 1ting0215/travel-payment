@@ -10,7 +10,7 @@ create table tp_notebooks (
   password_hash text,
   is_closed boolean not null default false,
   created_at timestamptz not null default now(),
-  expires_at timestamptz not null default (now() + interval '3 months')
+  last_accessed_at timestamptz not null default now()
 );
 
 create table tp_members (
@@ -77,6 +77,27 @@ create table tp_collection_info (
 );
 
 -- Storage buckets (create in Supabase dashboard > Storage)
--- bucket: tp-receipts    (public: false)
--- bucket: tp-proofs      (public: false)
--- bucket: tp-qrcodes     (public: false)
+-- bucket: tp-receipts    (public: true)
+-- bucket: tp-proofs      (public: true)
+-- bucket: tp-qrcodes     (public: true)
+
+-- ============================================================
+-- Migration: run in Supabase SQL Editor for existing databases
+-- ============================================================
+-- alter table tp_notebooks
+--   add column if not exists last_accessed_at timestamptz not null default now();
+-- alter table tp_notebooks drop column if exists expires_at;
+
+-- ============================================================
+-- Auto-delete inactive notebooks (14 days)
+-- Enable pg_cron: Supabase dashboard > Database > Extensions > pg_cron
+-- Then run:
+-- ============================================================
+-- select cron.schedule(
+--   'cleanup-inactive-notebooks',
+--   '0 2 * * *',
+--   $$
+--     delete from tp_notebooks
+--     where last_accessed_at < now() - interval '14 days';
+--   $$
+-- );
