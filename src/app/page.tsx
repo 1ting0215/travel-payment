@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 export default function LandingPage() {
+  const router = useRouter()
   const [title, setTitle] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [notebookId, setNotebookId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,7 +39,8 @@ export default function LandingPage() {
         return
       }
 
-      setSuccess(true)
+      const data = await res.json()
+      setNotebookId(data.id)
     } catch {
       setError('網路錯誤，請稍後再試')
     } finally {
@@ -64,14 +67,34 @@ export default function LandingPage() {
             <CardTitle>建立記帳本</CardTitle>
           </CardHeader>
           <CardContent>
-            {success ? (
-              <div className="py-6 text-center">
-                <div className="text-4xl mb-4">📬</div>
-                <p className="text-zinc-900 font-semibold text-lg mb-2">連結已寄至您的 Email</p>
-                <p className="text-zinc-500 text-sm">
-                  請查收 <span className="font-medium text-zinc-700">{email}</span> 的信件，
-                  點擊連結即可進入記帳本。
-                </p>
+            {notebookId ? (
+              <div className="py-6 flex flex-col gap-4">
+                <div className="text-center">
+                  <div className="text-4xl mb-3">✅</div>
+                  <p className="text-zinc-900 font-semibold text-lg mb-1">記帳本已建立</p>
+                  <p className="text-zinc-500 text-sm">
+                    連結已寄至 <span className="font-medium text-zinc-700">{email}</span>
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => router.push(`/notebook/${notebookId}`)}
+                >
+                  立即進入記帳本
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setNotebookId(null)
+                    setTitle('')
+                    setEmail('')
+                    setPassword('')
+                  }}
+                >
+                  建立另一個記帳本
+                </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">

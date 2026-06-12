@@ -44,18 +44,31 @@ export default function RemittancePage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [unsaved, setUnsaved] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
-      const [settlementRes, collectionRes] = await Promise.all([
-        fetch(`/api/notebooks/${id}/settlement`),
+      const [savedRes, collectionRes] = await Promise.all([
+        fetch(`/api/notebooks/${id}/settlement-items`),
         fetch(`/api/notebooks/${id}/collection`),
       ])
 
-      if (settlementRes.ok) {
-        const json = await settlementRes.json()
-        setTransfers(json.transfers ?? [])
+      if (savedRes.ok) {
+        const savedItems: SettlementItem[] = await savedRes.json()
+        if (savedItems.length > 0) {
+          setTransfers(savedItems)
+          setUnsaved(false)
+        } else {
+          // Fall back to calculated transfers
+          const calcRes = await fetch(`/api/notebooks/${id}/settlement`)
+          if (calcRes.ok) {
+            const json = await calcRes.json()
+            setTransfers(json.transfers ?? [])
+            setUnsaved(true)
+          }
+        }
       }
+
       if (collectionRes.ok) {
         setCollections(await collectionRes.json())
       }
@@ -67,12 +80,13 @@ export default function RemittancePage() {
   }, [id])
 
   useEffect(() => {
-    const stored = localStorage.getItem(`notebook_identity_${id}`)
+    const stored = sessionStorage.getItem(`notebook_identity_${id}`)
     if (stored) setIdentity(stored)
     fetchData()
   }, [id, fetchData])
 
   async function handleStatusUpdate(item: SettlementItem) {
+    if (unsaved) return
     const nextStatus = STATUS_NEXT[item.status]
     setUpdating(item.id)
     try {
@@ -93,14 +107,26 @@ export default function RemittancePage() {
   }
 
   async function handleProofUpload(item: SettlementItem, file: File) {
-    // Placeholder: in a real app this would upload to storage first
-    // For now just mark as paid
+    if (unsaved) return
     setUpdating(item.id)
     try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('notebook_id', id)
+      form.append('settlement_item_id', item.id)
+
+      const upRes = await fetch('/api/upload/proof', { method: 'POST', body: form })
+      if (!upRes.ok) {
+        const j = await upRes.json()
+        setError(j.error ?? '上傳失敗')
+        return
+      }
+      const { url } = await upRes.json()
+
       const res = await fetch(`/api/settlement/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paid', proof_url: null }),
+        body: JSON.stringify({ status: 'paid', proof_url: url }),
       })
       if (res.ok) {
         const updated: SettlementItem = await res.json()
@@ -141,6 +167,23 @@ export default function RemittancePage() {
           <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
         )}
 
+        {/* Unsaved warning banner */}
+        {unsaved && transfers.length > 0 && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 flex flex-col gap-2">
+            <p className="text-sm text-yellow-800 font-medium">
+              尚未儲存結算，無法追蹤付款狀態。請先至結算頁面儲存結算。
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-fit"
+              onClick={() => router.push(`/notebook/${id}/settlement`)}
+            >
+              前往結算頁面
+            </Button>
+          </div>
+        )}
+
         {transfers.length === 0 && (
           <div className="text-center py-20">
             <p className="text-zinc-400 text-sm">尚無結算記錄，請先進行結算</p>
@@ -171,6 +214,7 @@ export default function RemittancePage() {
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
                   showCollection
+                  disabled={unsaved}
                 />
               ))}
             </div>
@@ -194,6 +238,7 @@ export default function RemittancePage() {
                   onProofUpload={handleProofUpload}
                   showCollection={false}
                   canConfirm
+                  disabled={unsaved}
                 />
               ))}
             </div>
@@ -216,6 +261,7 @@ export default function RemittancePage() {
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
                   showCollection={false}
+                  disabled={unsaved}
                 />
               ))}
             </div>
@@ -234,6 +280,7 @@ function TransferCard({
   onProofUpload,
   showCollection,
   canConfirm = false,
+  disabled = false,
 }: {
   item: SettlementItem
   collection: CollectionInfo | undefined
@@ -242,6 +289,7 @@ function TransferCard({
   onProofUpload: (item: SettlementItem, file: File) => void
   showCollection: boolean
   canConfirm?: boolean
+  disabled?: boolean
 }) {
   return (
     <Card>
@@ -293,12 +341,12 @@ function TransferCard({
             variant="outline"
             size="sm"
             onClick={() => onStatusUpdate(item)}
-            disabled={isUpdating}
+            disabled={isUpdating || disabled}
           >
             {isUpdating ? '更新中…' : `標記為 ${STATUS_LABELS[STATUS_NEXT[item.status]]}`}
           </Button>
 
-          {item.status === 'unpaid' && showCollection && (
+          {item.status === 'unpaid' && showCollection && !disabled && (
             <label className="cursor-pointer">
               <span className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-lg border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 transition-colors">
                 上傳付款憑證

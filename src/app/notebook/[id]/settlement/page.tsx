@@ -161,7 +161,7 @@ export default function SettlementPage() {
                 <Badge variant="default" className="text-sm px-3 py-1">{curr}</Badge>
                 {exchInfo && (
                   <span className="text-xs text-zinc-400">
-                    1 {curr} = {exchInfo.rate} {exchInfo.base}
+                    1 TWD = {exchInfo.rate} {curr}
                   </span>
                 )}
               </div>
@@ -277,6 +277,17 @@ export default function SettlementPage() {
             >
               {saving ? '儲存中…' : saved ? '✓ 已儲存' : '儲存結算'}
             </Button>
+
+            {saved && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
+                onClick={() => router.push(`/notebook/${id}/remittance`)}
+              >
+                前往匯款追蹤 →
+              </Button>
+            )}
 
             {error && (
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 text-center">{error}</p>

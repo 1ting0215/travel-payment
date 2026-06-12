@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const { data, error } = await supabase
-      .from('settlement_items')
+      .from('tp_settlement_items')
       .update(updates)
       .eq('id', id)
       .select()

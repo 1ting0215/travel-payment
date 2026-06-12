@@ -7,7 +7,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
 
     const { data, error } = await supabase
-      .from('collection_info')
+      .from('tp_collection_info')
       .select('*')
       .eq('notebook_id', id)
 
@@ -43,7 +43,7 @@ async function upsertCollection(request: NextRequest, notebookId: string) {
     const supabase = createClient()
 
     const { data, error } = await supabase
-      .from('collection_info')
+      .from('tp_collection_info')
       .upsert(
         {
           notebook_id: notebookId,

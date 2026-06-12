@@ -7,8 +7,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const supabase = createClient()
 
     const { data: expense, error } = await supabase
-      .from('expenses')
-      .select('*, splits:expense_splits(*)')
+      .from('tp_expenses')
+      .select('*, splits:tp_expense_splits(*)')
       .eq('id', id)
       .single()
 
@@ -27,9 +27,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { id } = await params
     const supabase = createClient()
 
-    await supabase.from('expense_splits').delete().eq('expense_id', id)
+    await supabase.from('tp_expense_splits').delete().eq('expense_id', id)
 
-    const { error } = await supabase.from('expenses').delete().eq('id', id)
+    const { error } = await supabase.from('tp_expenses').delete().eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

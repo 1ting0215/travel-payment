@@ -48,7 +48,10 @@ export default function NewExpensePage() {
   const [splits, setSplits] = useState<SplitEntry[]>([])
   const [notes, setNotes] = useState('')
   const [receipt, setReceipt] = useState<File | null>(null)
+  const [addMemberInline, setAddMemberInline] = useState(false)
+  const [inlineMemberName, setInlineMemberName] = useState('')
   const [newCurrency, setNewCurrency] = useState('')
+  const [newCurrencyRate, setNewCurrencyRate] = useState('')
   const [showNewCurrency, setShowNewCurrency] = useState(false)
 
   const [loading, setLoading] = useState(true)
@@ -65,15 +68,30 @@ export default function NewExpensePage() {
   }, [])
 
   useEffect(() => {
-    const stored = localStorage.getItem(`notebook_identity_${id}`)
+    const stored = sessionStorage.getItem(`notebook_identity_${id}`)
     if (stored) setIdentity(stored)
 
     fetch(`/api/notebooks/${id}`)
       .then(r => r.json())
-      .then(data => {
+      .then(async data => {
         setMembers(data.members ?? [])
-        setCurrencies(data.currencies ?? [])
-        if (data.currencies?.length > 0) setCurrency(data.currencies[0].code)
+        let currList: Currency[] = data.currencies ?? []
+
+        // Auto-initialize TWD if no currencies exist
+        if (currList.length === 0) {
+          await fetch(`/api/notebooks/${id}/currencies`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: 'TWD' }),
+          })
+          currList = [{ id: crypto.randomUUID(), notebook_id: id, code: 'TWD', exchange_rate: null, base_currency: null }]
+        }
+
+        setCurrencies(currList)
+        // Default to TWD if available, otherwise first
+        const twd = currList.find(c => c.code === 'TWD')
+        setCurrency(twd ? 'TWD' : currList[0].code)
+
         if (stored) setPayer(stored)
         else if (data.members?.length > 0) setPayer(data.members[0].name)
         initSplits(data.members ?? [])
@@ -117,15 +135,32 @@ export default function NewExpensePage() {
   async function handleAddCurrency() {
     if (!newCurrency.trim()) return
     const code = newCurrency.trim().toUpperCase()
+    const rate = parseFloat(newCurrencyRate) || null
     await fetch(`/api/notebooks/${id}/currencies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }),
     })
-    setCurrencies(prev => [...prev, { id: crypto.randomUUID(), notebook_id: id, code, exchange_rate: null, base_currency: null }])
+    setCurrencies(prev => [...prev, { id: crypto.randomUUID(), notebook_id: id, code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }])
     setCurrency(code)
     setNewCurrency('')
+    setNewCurrencyRate('')
     setShowNewCurrency(false)
+  }
+
+  async function handleAddMemberInline() {
+    if (!inlineMemberName.trim()) return
+    const name = inlineMemberName.trim()
+    await fetch(`/api/notebooks/${id}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    const newMember: Member = { id: crypto.randomUUID(), notebook_id: id, name, created_at: new Date().toISOString() }
+    setMembers(prev => [...prev, newMember])
+    setSplits(prev => [...prev, { member_name: name, amount: 0, ratio: 1, checked: true }])
+    setInlineMemberName('')
+    setAddMemberInline(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -153,11 +188,22 @@ export default function NewExpensePage() {
 
     setSubmitting(true)
     try {
-      // Handle receipt upload if provided (placeholder — no storage configured)
+      // Handle receipt upload if provided
       let receiptUrl: string | null = null
       if (receipt) {
-        // Future: upload to storage and get URL
-        receiptUrl = null
+        const form = new FormData()
+        form.append('file', receipt)
+        form.append('notebook_id', id)
+        form.append('expense_title', title.trim())
+        const upRes = await fetch('/api/upload/receipt', { method: 'POST', body: form })
+        if (!upRes.ok) {
+          const upJson = await upRes.json()
+          setError(upJson.error ?? '收據上傳失敗')
+          setSubmitting(false)
+          return
+        }
+        const { url } = await upRes.json()
+        receiptUrl = url
       }
 
       const res = await fetch('/api/expenses', {
@@ -232,61 +278,60 @@ export default function NewExpensePage() {
               />
             </div>
 
-            <div className="flex gap-3">
-              <div className="flex flex-col gap-1.5 flex-1">
+            {/* Date / Amount / Currency — same row */}
+            <div className="flex gap-2 items-end">
+              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                 <label className="text-sm font-medium text-zinc-700">日期 <span className="text-red-500">*</span></label>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={e => setDate(e.target.value)}
-                  required
-                />
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
               </div>
-              <div className="flex flex-col gap-1.5 w-28">
+              <div className="flex flex-col gap-1.5 w-24 shrink-0">
                 <label className="text-sm font-medium text-zinc-700">金額 <span className="text-red-500">*</span></label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  required
-                />
+                <Input type="number" min="0" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} required />
               </div>
-            </div>
-
-            {/* Currency */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-zinc-700">幣別 <span className="text-red-500">*</span></label>
-              {showNewCurrency ? (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="例：JPY"
-                    value={newCurrency}
-                    onChange={e => setNewCurrency(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCurrency() } }}
-                  />
-                  <Button type="button" onClick={handleAddCurrency} size="sm">新增</Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewCurrency(false)}>取消</Button>
-                </div>
-              ) : (
+              <div className="flex flex-col gap-1.5 w-28 shrink-0">
+                <label className="text-sm font-medium text-zinc-700">幣別 <span className="text-red-500">*</span></label>
                 <Select value={currency} onValueChange={val => {
                   if (val === '__new__') setShowNewCurrency(true)
-                  else setCurrency(val)
+                  else { setCurrency(val); setShowNewCurrency(false) }
                 }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="選擇幣別" />
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="幣別" />
                   </SelectTrigger>
                   <SelectContent>
                     {currencies.map(c => (
-                      <SelectItem key={c.id} value={c.code}>{c.code}</SelectItem>
+                      <SelectItem key={c.id} value={c.code}>
+                        <span>{c.code}{c.code === 'TWD' ? ' ★' : ''}{c.exchange_rate ? ` (1TWD=${c.exchange_rate})` : ''}</span>
+                      </SelectItem>
                     ))}
-                    <SelectItem value="__new__">+ 新增幣別</SelectItem>
+                    <SelectItem value="__new__">＋ 新增幣別</SelectItem>
                   </SelectContent>
                 </Select>
-              )}
+              </div>
             </div>
+            {showNewCurrency && (
+              <div className="flex flex-col gap-2 p-3 rounded-lg border border-indigo-200 bg-indigo-50/40">
+                <Input
+                  placeholder="幣別代碼，例：JPY"
+                  value={newCurrency}
+                  onChange={e => setNewCurrency(e.target.value.toUpperCase())}
+                />
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <span className="shrink-0 font-medium">1 TWD =</span>
+                  <Input
+                    type="number" min="0" step="0.0001" placeholder="匯率"
+                    value={newCurrencyRate}
+                    onChange={e => setNewCurrencyRate(e.target.value)}
+                    className="w-28"
+                  />
+                  <span className="shrink-0 font-medium text-zinc-800">{newCurrency || '???'}</span>
+                </div>
+                <p className="text-xs text-zinc-400">匯率選填，留空則不顯示換算</p>
+                <div className="flex gap-2">
+                  <Button type="button" onClick={handleAddCurrency} size="sm" disabled={!newCurrency.trim()}>新增</Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => { setShowNewCurrency(false); setNewCurrency(''); setNewCurrencyRate('') }}>取消</Button>
+                </div>
+              </div>
+            )}
 
             {/* Payer */}
             <div className="flex flex-col gap-1.5">
@@ -363,7 +408,29 @@ export default function NewExpensePage() {
 
               {/* Split participants */}
               <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-zinc-700">分攤成員</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-zinc-700">分攤成員</p>
+                  <button
+                    type="button"
+                    onClick={() => setAddMemberInline(v => !v)}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                  >
+                    ＋ 新增成員
+                  </button>
+                </div>
+                {addMemberInline && (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="成員名稱"
+                      value={inlineMemberName}
+                      onChange={e => setInlineMemberName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMemberInline() } }}
+                      className="h-8 text-sm"
+                    />
+                    <Button type="button" size="sm" onClick={handleAddMemberInline} disabled={!inlineMemberName.trim()} className="h-8">新增</Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => { setAddMemberInline(false); setInlineMemberName('') }} className="h-8">取消</Button>
+                  </div>
+                )}
                 {splits.map((split, idx) => (
                   <div key={split.member_name} className="flex items-center gap-3">
                     <input
@@ -428,7 +495,7 @@ export default function NewExpensePage() {
         <Card>
           <CardContent className="pt-4 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-zinc-700">備注（選填）</label>
+              <label className="text-sm font-medium text-zinc-700">備註（選填）</label>
               <textarea
                 className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 rows={2}

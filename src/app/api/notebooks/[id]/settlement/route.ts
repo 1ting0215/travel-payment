@@ -9,8 +9,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
 
     const { data, error } = await supabase
-      .from('expenses')
-      .select('*, splits:expense_splits(*)')
+      .from('tp_expenses')
+      .select('*, splits:tp_expense_splits(*)')
       .eq('notebook_id', id)
       .eq('visibility', 'shared')
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       proof_url: null,
     }))
 
-    const { data, error } = await supabase.from('settlement_items').insert(rows).select()
+    const { data, error } = await supabase.from('tp_settlement_items').insert(rows).select()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

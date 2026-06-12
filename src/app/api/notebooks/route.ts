@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('notebooks')
+      .from('tp_notebooks')
       .insert({
         title,
         creator_email,
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const notebookUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/notebook/${data.id}`
 
     await resend.emails.send({
-      from: 'Travel Payment <noreply@resend.dev>',
+      from: 'Travel Payment <onboarding@resend.dev>',
       to: creator_email,
       subject: `Your travel notebook: ${title}`,
       html: `<p>Your notebook <strong>${title}</strong> has been created.</p><p><a href="${notebookUrl}">Open notebook</a></p><p>Link: ${notebookUrl}</p>`,

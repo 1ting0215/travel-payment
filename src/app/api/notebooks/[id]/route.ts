@@ -7,9 +7,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
 
     const [notebookRes, membersRes, currenciesRes] = await Promise.all([
-      supabase.from('notebooks').select('*').eq('id', id).single(),
-      supabase.from('members').select('*').eq('notebook_id', id),
-      supabase.from('currencies').select('*').eq('notebook_id', id),
+      supabase.from('tp_notebooks').select('*').eq('id', id).single(),
+      supabase.from('tp_members').select('*').eq('notebook_id', id),
+      supabase.from('tp_currencies').select('*').eq('notebook_id', id),
     ])
 
     if (notebookRes.error) {

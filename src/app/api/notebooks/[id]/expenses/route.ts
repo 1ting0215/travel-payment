@@ -9,8 +9,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const createdBy = searchParams.get('created_by')
 
     let query = supabase
-      .from('expenses')
-      .select('*, splits:expense_splits(*)')
+      .from('tp_expenses')
+      .select('*, splits:tp_expense_splits(*)')
       .eq('notebook_id', id)
       .order('date', { ascending: false })
 

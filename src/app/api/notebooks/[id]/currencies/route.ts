@@ -7,7 +7,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
 
     const { data, error } = await supabase
-      .from('currencies')
+      .from('tp_currencies')
       .select('*')
       .eq('notebook_id', id)
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const supabase = createClient()
 
     const { data, error } = await supabase
-      .from('currencies')
+      .from('tp_currencies')
       .upsert(
         { notebook_id: id, code, exchange_rate: exchange_rate ?? null, base_currency: base_currency ?? null },
         { onConflict: 'notebook_id,code' }

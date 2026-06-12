@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const supabase = createClient()
 
     const { data: notebook, error: fetchError } = await supabase
-      .from('notebooks')
+      .from('tp_notebooks')
       .select('creator_email')
       .eq('id', id)
       .single()
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const { data, error } = await supabase
-      .from('notebooks')
+      .from('tp_notebooks')
       .update({ is_closed: action === 'close' })
       .eq('id', id)
       .select()

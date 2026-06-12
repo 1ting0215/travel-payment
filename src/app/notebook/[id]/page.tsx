@@ -48,6 +48,27 @@ export default function NotebookPage() {
   const [activeTab, setActiveTab] = useState<Tab>('expenses')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [addMemberName, setAddMemberName] = useState('')
+  const [addMemberLoading, setAddMemberLoading] = useState(false)
+
+  // Share link copy
+  const [copied, setCopied] = useState(false)
+
+  // Close/reopen dialog
+  const [closeOpen, setCloseOpen] = useState(false)
+  const [closeEmail, setCloseEmail] = useState('')
+  const [closeLoading, setCloseLoading] = useState(false)
+  const [closeError, setCloseError] = useState('')
+
+  // Currencies dialog
+  const [currenciesOpen, setCurrenciesOpen] = useState(false)
+  const [editingCurrencyCode, setEditingCurrencyCode] = useState<string | null>(null)
+  const [editingRate, setEditingRate] = useState('')
+  const [savingRate, setSavingRate] = useState(false)
+  const [newCurrencyCode, setNewCurrencyCode] = useState('')
+  const [newCurrencyRate, setNewCurrencyRate] = useState('')
+  const [addCurrencyLoading, setAddCurrencyLoading] = useState(false)
 
   const fetchData = useCallback(async (currentIdentity: string | null) => {
     try {
@@ -75,7 +96,7 @@ export default function NotebookPage() {
   }, [id])
 
   useEffect(() => {
-    const stored = localStorage.getItem(`notebook_identity_${id}`)
+    const stored = sessionStorage.getItem(`notebook_identity_${id}`)
     if (stored) {
       setIdentity(stored)
       fetchData(stored)
@@ -94,7 +115,7 @@ export default function NotebookPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim() }),
       })
-      localStorage.setItem(`notebook_identity_${id}`, name.trim())
+      sessionStorage.setItem(`notebook_identity_${id}`, name.trim())
       setIdentity(name.trim())
       setIdentityOpen(false)
       const expRes = await fetch(
@@ -109,6 +130,105 @@ export default function NotebookPage() {
   function handleIdentityConfirm() {
     const name = selectedMember || newMemberName
     saveIdentity(name)
+  }
+
+  async function handleAddMember() {
+    if (!addMemberName.trim()) return
+    setAddMemberLoading(true)
+    try {
+      const res = await fetch(`/api/notebooks/${id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: addMemberName.trim() }),
+      })
+      if (res.ok) {
+        setAddMemberName('')
+        await fetchData(identity)
+      }
+    } finally {
+      setAddMemberLoading(false)
+    }
+  }
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  async function handleCloseNotebook() {
+    if (!data) return
+    setCloseLoading(true)
+    setCloseError('')
+    try {
+      const action = data.notebook.is_closed ? 'open' : 'close'
+      const res = await fetch(`/api/notebooks/${id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creator_email: closeEmail, action }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setCloseError(json.error ?? '操作失敗')
+        return
+      }
+      setData(prev => prev ? { ...prev, notebook: { ...prev.notebook, is_closed: action === 'close' } } : prev)
+      setCloseOpen(false)
+      setCloseEmail('')
+    } finally {
+      setCloseLoading(false)
+    }
+  }
+
+  async function handleSaveRate(code: string) {
+    const rate = parseFloat(editingRate)
+    if (isNaN(rate) || rate <= 0) return
+    setSavingRate(true)
+    try {
+      const res = await fetch(`/api/notebooks/${id}/currencies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, exchange_rate: rate, base_currency: 'TWD' }),
+      })
+      if (res.ok) {
+        setData(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            currencies: prev.currencies.map(c =>
+              c.code === code ? { ...c, exchange_rate: rate, base_currency: 'TWD' } : c
+            ),
+          }
+        })
+        setEditingCurrencyCode(null)
+        setEditingRate('')
+      }
+    } finally {
+      setSavingRate(false)
+    }
+  }
+
+  async function handleAddCurrency() {
+    if (!newCurrencyCode.trim()) return
+    const code = newCurrencyCode.trim().toUpperCase()
+    const rate = parseFloat(newCurrencyRate) || null
+    setAddCurrencyLoading(true)
+    try {
+      const res = await fetch(`/api/notebooks/${id}/currencies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }),
+      })
+      if (res.ok) {
+        const newCurr = await res.json()
+        setData(prev => prev ? { ...prev, currencies: [...prev.currencies, newCurr] } : prev)
+        setNewCurrencyCode('')
+        setNewCurrencyRate('')
+      }
+    } finally {
+      setAddCurrencyLoading(false)
+    }
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -180,6 +300,151 @@ export default function NotebookPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Members management dialog */}
+      <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
+        <DialogContent className="mx-4">
+          <DialogHeader>
+            <DialogTitle>成員管理</DialogTitle>
+            <DialogDescription>新增或查看記帳本成員</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {members.map(m => (
+              <span key={m.id} className="rounded-lg px-3 py-1.5 text-sm bg-zinc-100 text-zinc-700 border border-zinc-200">
+                {m.name}
+              </span>
+            ))}
+            {members.length === 0 && <p className="text-sm text-zinc-400">尚無成員</p>}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="輸入成員名稱"
+              value={addMemberName}
+              onChange={e => setAddMemberName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddMember() }}
+            />
+            <Button onClick={handleAddMember} disabled={addMemberLoading || !addMemberName.trim()}>
+              {addMemberLoading ? '…' : '新增'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Currencies dialog */}
+      <Dialog open={currenciesOpen} onOpenChange={setCurrenciesOpen}>
+        <DialogContent className="mx-4">
+          <DialogHeader>
+            <DialogTitle>幣別與匯率</DialogTitle>
+            <DialogDescription>管理記帳本使用的幣別與匯率</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mb-4">
+            {currencies.map(c => (
+              <div key={c.id} className="flex items-center gap-3 py-2 border-b border-zinc-100 last:border-0">
+                <span className="font-semibold text-zinc-900 w-12">{c.code}</span>
+                {editingCurrencyCode === c.code ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-sm text-zinc-500 shrink-0">1 TWD =</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      placeholder="匯率"
+                      value={editingRate}
+                      onChange={e => setEditingRate(e.target.value)}
+                      className="w-24"
+                    />
+                    <span className="text-sm text-zinc-500 shrink-0">{c.code}</span>
+                    <Button size="sm" onClick={() => handleSaveRate(c.code)} disabled={savingRate}>
+                      {savingRate ? '…' : '儲存'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditingCurrencyCode(null); setEditingRate('') }}>
+                      取消
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm text-zinc-500 flex-1">
+                      {c.exchange_rate
+                        ? `1 TWD = ${c.exchange_rate} ${c.code}`
+                        : '未設匯率'}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingCurrencyCode(c.code)
+                        setEditingRate(c.exchange_rate ? String(c.exchange_rate) : '')
+                      }}
+                    >
+                      編輯匯率
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2 p-3 rounded-lg border border-zinc-200 bg-zinc-50">
+            <p className="text-xs font-medium text-zinc-600">新增幣別</p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="代碼，例：JPY"
+                value={newCurrencyCode}
+                onChange={e => setNewCurrencyCode(e.target.value.toUpperCase())}
+                className="uppercase w-28"
+              />
+              <div className="flex items-center gap-1 flex-1">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  placeholder="匯率（選填）"
+                  value={newCurrencyRate}
+                  onChange={e => setNewCurrencyRate(e.target.value)}
+                />
+                <span className="text-xs text-zinc-500 shrink-0">TWD</span>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleAddCurrency}
+              disabled={addCurrencyLoading || !newCurrencyCode.trim()}
+            >
+              {addCurrencyLoading ? '…' : '新增'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Close/Reopen dialog */}
+      <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
+        <DialogContent className="mx-4">
+          <DialogHeader>
+            <DialogTitle>管理記帳本</DialogTitle>
+            <DialogDescription>請輸入建立記帳本的 Email 以驗證身份</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-zinc-700">Creator Email</label>
+              <Input
+                type="email"
+                placeholder="建立者 Email"
+                value={closeEmail}
+                onChange={e => { setCloseEmail(e.target.value); setCloseError('') }}
+              />
+            </div>
+            {closeError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{closeError}</p>
+            )}
+            <Button
+              onClick={handleCloseNotebook}
+              disabled={closeLoading || !closeEmail.trim()}
+              variant={notebook.is_closed ? 'default' : 'destructive'}
+            >
+              {closeLoading ? '處理中…' : notebook.is_closed ? '重新開啟記帳本' : '關閉記帳本'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Closed banner */}
       {notebook.is_closed && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-center">
@@ -190,19 +455,57 @@ export default function NotebookPage() {
       {/* Header */}
       <div className="bg-white border-b border-zinc-200 px-4 py-5">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-xl font-bold text-zinc-900">{notebook.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-zinc-900 flex-1">{notebook.title}</h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setCloseOpen(true); setCloseError('') }}
+              className="text-xs"
+            >
+              管理
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyLink}
+              className="text-xs"
+            >
+              {copied ? '✓ 已複製' : '複製分享連結'}
+            </Button>
+          </div>
           <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-zinc-500">
-            <span>{members.length} 位成員</span>
+            <button
+              onClick={() => setMembersOpen(true)}
+              className="inline-flex items-center gap-1 rounded-md bg-zinc-100 hover:bg-indigo-50 hover:text-indigo-600 border border-zinc-200 hover:border-indigo-300 px-2.5 py-1 text-xs font-medium transition-colors"
+            >
+              👥 {members.length} 位成員
+            </button>
             <span>·</span>
-            <span className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrenciesOpen(true)}
+              className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
+            >
               {currencies.map(c => (
                 <Badge key={c.id} variant="default">{c.code}</Badge>
               ))}
-            </span>
+            </button>
             {identity && (
               <>
                 <span>·</span>
-                <span className="text-indigo-600 font-medium">{identity}</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-indigo-600 font-medium">{identity}</span>
+                  <button
+                    onClick={() => {
+                      sessionStorage.removeItem(`notebook_identity_${id}`)
+                      setIdentity(null)
+                      setIdentityOpen(true)
+                    }}
+                    className="text-xs text-zinc-400 hover:text-zinc-600 underline ml-1"
+                  >
+                    [切換]
+                  </button>
+                </span>
               </>
             )}
           </div>
@@ -258,9 +561,22 @@ export default function NotebookPage() {
 function ExpenseList({ expenses, identity }: { expenses: Expense[]; identity: string | null }) {
   if (expenses.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="text-5xl mb-4">🧾</div>
-        <p className="text-zinc-500 text-sm">還沒有費用，點擊右下角按鈕新增</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="text-5xl mb-4">📋</div>
+        <p className="text-zinc-700 font-medium mb-3">還沒有費用</p>
+        <div className="rounded-xl border border-zinc-200 bg-white px-5 py-4 text-left max-w-xs w-full shadow-sm">
+          <p className="text-sm font-medium text-zinc-600 mb-2">開始使用步驟：</p>
+          <ol className="text-sm text-zinc-500 flex flex-col gap-2 list-none">
+            <li className="flex gap-2">
+              <span className="shrink-0 font-semibold text-indigo-600">1.</span>
+              <span>點「N 位成員」按鈕新增所有旅行成員</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="shrink-0 font-semibold text-indigo-600">2.</span>
+              <span>點右下角「＋ 新增費用」開始記帳</span>
+            </li>
+          </ol>
+        </div>
       </div>
     )
   }
@@ -332,7 +648,10 @@ function CollectionTab({
   const [editing, setEditing] = useState(false)
   const [accountInfo, setAccountInfo] = useState('')
   const [notes, setNotes] = useState('')
+  const [qrFile, setQrFile] = useState<File | null>(null)
+  const [qrPreview, setQrPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   useEffect(() => {
     fetch(`/api/notebooks/${notebookId}/collection`)
@@ -347,30 +666,55 @@ function CollectionTab({
     if (myCollection) {
       setAccountInfo(myCollection.account_info ?? '')
       setNotes(myCollection.notes ?? '')
+      setQrPreview(myCollection.qr_code_url ?? null)
     }
   }, [myCollection])
+
+  function handleQrChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setQrFile(file)
+    setQrPreview(URL.createObjectURL(file))
+    setUploadError('')
+  }
 
   async function handleSave() {
     if (!identity) return
     setSaving(true)
+    setUploadError('')
     try {
+      let qrUrl = myCollection?.qr_code_url ?? null
+
+      if (qrFile) {
+        const form = new FormData()
+        form.append('file', qrFile)
+        form.append('notebook_id', notebookId)
+        form.append('member_name', identity)
+        const upRes = await fetch('/api/upload/qrcode', { method: 'POST', body: form })
+        if (!upRes.ok) {
+          const j = await upRes.json()
+          setUploadError(j.error ?? 'QR Code 上傳失敗')
+          setSaving(false)
+          return
+        }
+        const { url } = await upRes.json()
+        qrUrl = url
+      }
+
       const res = await fetch(`/api/notebooks/${notebookId}/collection`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ member_name: identity, account_info: accountInfo, notes }),
+        body: JSON.stringify({ member_name: identity, account_info: accountInfo, notes, qr_code_url: qrUrl }),
       })
       if (res.ok) {
         const updated = await res.json()
         setCollections(prev => {
           const idx = prev.findIndex(c => c.member_name === identity)
-          if (idx >= 0) {
-            const copy = [...prev]
-            copy[idx] = updated
-            return copy
-          }
+          if (idx >= 0) { const copy = [...prev]; copy[idx] = updated; return copy }
           return [...prev, updated]
         })
         setEditing(false)
+        setQrFile(null)
       }
     } finally {
       setSaving(false)
@@ -379,7 +723,6 @@ function CollectionTab({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* My collection info */}
       {identity && (
         <Card>
           <CardContent className="pt-4">
@@ -402,22 +745,40 @@ function CollectionTab({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-zinc-500">備注</label>
-                  <Input
-                    placeholder="其他說明"
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                  />
+                  <label className="text-xs font-medium text-zinc-500">備註</label>
+                  <Input placeholder="其他說明" value={notes} onChange={e => setNotes(e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-medium text-zinc-500">QR Code 圖片（選填）</label>
+                  {qrPreview && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={qrPreview} alt="QR Code 預覽" className="w-32 h-32 object-contain rounded-lg border border-zinc-200 bg-white" />
+                  )}
+                  <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 transition-colors w-fit">
+                    <span>📷</span>
+                    <span>{qrPreview ? '更換圖片' : '上傳 QR Code'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleQrChange}
+                    />
+                  </label>
+                  {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
                 </div>
                 <Button onClick={handleSave} disabled={saving} size="sm">
                   {saving ? '儲存中…' : '儲存'}
                 </Button>
               </div>
             ) : myCollection ? (
-              <div className="text-sm text-zinc-700 whitespace-pre-wrap">
-                {myCollection.account_info || <span className="text-zinc-400">尚未填寫</span>}
-                {myCollection.notes && (
-                  <p className="text-zinc-500 mt-1 text-xs">{myCollection.notes}</p>
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-zinc-700 whitespace-pre-wrap">
+                  {myCollection.account_info || <span className="text-zinc-400">尚未填寫</span>}
+                </p>
+                {myCollection.notes && <p className="text-zinc-500 text-xs">{myCollection.notes}</p>}
+                {myCollection.qr_code_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={myCollection.qr_code_url} alt="QR Code" className="w-32 h-32 object-contain rounded-lg border border-zinc-200 bg-white" />
                 )}
               </div>
             ) : (
@@ -427,7 +788,6 @@ function CollectionTab({
         </Card>
       )}
 
-      {/* Other members */}
       {collections.filter(c => c.member_name !== identity).map(c => (
         <Card key={c.member_name}>
           <CardContent className="pt-4">
@@ -438,7 +798,7 @@ function CollectionTab({
             {c.notes && <p className="text-xs text-zinc-400 mt-1">{c.notes}</p>}
             {c.qr_code_url && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={c.qr_code_url} alt="QR Code" className="mt-2 w-28 h-28 object-contain rounded" />
+              <img src={c.qr_code_url} alt="QR Code" className="mt-2 w-32 h-32 object-contain rounded-lg border border-zinc-200 bg-white" />
             )}
           </CardContent>
         </Card>

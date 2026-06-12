@@ -14,7 +14,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const supabase = createClient()
 
     const { data, error } = await supabase
-      .from('members')
+      .from('tp_members')
       .upsert({ notebook_id: id, name }, { onConflict: 'notebook_id,name' })
       .select()
       .single()
