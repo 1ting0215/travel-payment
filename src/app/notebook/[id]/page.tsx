@@ -754,16 +754,19 @@ function CollectionTab({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={qrPreview} alt="QR Code 預覽" className="w-32 h-32 object-contain rounded-lg border border-zinc-200 bg-white" />
                   )}
-                  <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 transition-colors w-fit">
-                    <span>📷</span>
-                    <span>{qrPreview ? '更換圖片' : '上傳 QR Code'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleQrChange}
-                    />
-                  </label>
+                  <div className="flex flex-col gap-1">
+                    <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 transition-colors w-fit">
+                      <span>📷</span>
+                      <span>{qrPreview ? '更換圖片' : '上傳 QR Code'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleQrChange}
+                      />
+                    </label>
+                    <p className="text-xs text-zinc-400">限圖片格式，3 MB 以內</p>
+                  </div>
                   {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
                 </div>
                 <Button onClick={handleSave} disabled={saving} size="sm">

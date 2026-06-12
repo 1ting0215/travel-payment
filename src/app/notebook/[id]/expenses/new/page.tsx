@@ -513,6 +513,7 @@ export default function NewExpensePage() {
                 onChange={e => setReceipt(e.target.files?.[0] ?? null)}
                 className="block w-full text-sm text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200"
               />
+              <p className="text-xs text-zinc-400">限圖片格式，3 MB 以內</p>
             </div>
           </CardContent>
         </Card>

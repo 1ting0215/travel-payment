@@ -347,20 +347,23 @@ function TransferCard({
           </Button>
 
           {item.status === 'unpaid' && showCollection && !disabled && (
-            <label className="cursor-pointer">
-              <span className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-lg border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 transition-colors">
-                上傳付款憑證
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => {
-                  const file = e.target.files?.[0]
-                  if (file) onProofUpload(item, file)
-                }}
-              />
-            </label>
+            <div className="flex flex-col gap-1">
+              <label className="cursor-pointer">
+                <span className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-lg border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 transition-colors">
+                  上傳付款憑證
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) onProofUpload(item, file)
+                  }}
+                />
+              </label>
+              <p className="text-xs text-zinc-400">限圖片格式，3 MB 以內</p>
+            </div>
           )}
 
           {item.proof_url && (
