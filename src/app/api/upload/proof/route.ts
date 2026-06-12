@@ -11,6 +11,12 @@ export async function POST(request: NextRequest) {
     if (!file || !notebookId || !itemId) {
       return NextResponse.json({ error: 'file, notebook_id, settlement_item_id required' }, { status: 400 })
     }
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: '僅支援圖片格式' }, { status: 400 })
+    }
+    if (file.size > 1 * 1024 * 1024) {
+      return NextResponse.json({ error: '檔案超過 1 MB 上限' }, { status: 400 })
+    }
 
     const ext = file.name.split('.').pop() ?? 'jpg'
     const path = `${notebookId}/${itemId}_${Date.now()}.${ext}`

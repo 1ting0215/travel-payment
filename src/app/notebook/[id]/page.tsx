@@ -765,7 +765,7 @@ function CollectionTab({
                         onChange={handleQrChange}
                       />
                     </label>
-                    <p className="text-xs text-zinc-400">限圖片格式，3 MB 以內</p>
+                    <p className="text-xs text-zinc-400">限圖片格式，1 MB 以內</p>
                   </div>
                   {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
                 </div>
