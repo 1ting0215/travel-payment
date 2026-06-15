@@ -16,9 +16,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient()
 
-    const expiresAt = new Date()
-    expiresAt.setMonth(expiresAt.getMonth() + 3)
-
     let passwordHash: string | null = null
     if (password) {
       passwordHash = await bcrypt.hash(password, 10)
@@ -30,7 +27,6 @@ export async function POST(request: NextRequest) {
         title,
         creator_email,
         password_hash: passwordHash,
-        expires_at: expiresAt.toISOString(),
         is_closed: false,
       })
       .select('id, title')

@@ -8,7 +8,7 @@ export interface Notebook {
   creator_email: string
   is_closed: boolean
   created_at: string
-  expires_at: string
+  last_accessed_at: string
 }
 
 export interface Member {
