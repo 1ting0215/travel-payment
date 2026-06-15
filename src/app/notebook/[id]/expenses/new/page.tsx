@@ -53,6 +53,8 @@ export default function NewExpensePage() {
   const [newCurrency, setNewCurrency] = useState('')
   const [newCurrencyRate, setNewCurrencyRate] = useState('')
   const [showNewCurrency, setShowNewCurrency] = useState(false)
+  const [showNewPayer, setShowNewPayer] = useState(false)
+  const [newPayerName, setNewPayerName] = useState('')
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -161,6 +163,28 @@ export default function NewExpensePage() {
     setSplits(prev => [...prev, { member_name: name, amount: 0, ratio: 1, checked: true }])
     setInlineMemberName('')
     setAddMemberInline(false)
+  }
+
+  async function handleAddPayer() {
+    if (!newPayerName.trim()) return
+    const name = newPayerName.trim()
+    if (members.some(m => m.name === name)) {
+      setPayer(name)
+      setNewPayerName('')
+      setShowNewPayer(false)
+      return
+    }
+    await fetch(`/api/notebooks/${id}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    const newMember: Member = { id: crypto.randomUUID(), notebook_id: id, name, created_at: new Date().toISOString() }
+    setMembers(prev => [...prev, newMember])
+    setSplits(prev => [...prev, { member_name: name, amount: 0, ratio: 1, checked: true }])
+    setPayer(name)
+    setNewPayerName('')
+    setShowNewPayer(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -278,13 +302,15 @@ export default function NewExpensePage() {
               />
             </div>
 
-            {/* Date / Amount / Currency — same row */}
+            {/* Date */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-zinc-700">日期 <span className="text-red-500">*</span></label>
+              <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+            </div>
+
+            {/* Amount + Currency */}
             <div className="flex gap-2 items-end">
               <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                <label className="text-sm font-medium text-zinc-700">日期 <span className="text-red-500">*</span></label>
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
-              </div>
-              <div className="flex flex-col gap-1.5 w-24 shrink-0">
                 <label className="text-sm font-medium text-zinc-700">金額 <span className="text-red-500">*</span></label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} required />
               </div>
@@ -336,7 +362,10 @@ export default function NewExpensePage() {
             {/* Payer */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-zinc-700">付款人 <span className="text-red-500">*</span></label>
-              <Select value={payer} onValueChange={setPayer}>
+              <Select value={payer} onValueChange={val => {
+                if (val === '__new_payer__') setShowNewPayer(true)
+                else { setPayer(val); setShowNewPayer(false) }
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="選擇付款人" />
                 </SelectTrigger>
@@ -344,9 +373,23 @@ export default function NewExpensePage() {
                   {members.map(m => (
                     <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
                   ))}
+                  <SelectItem value="__new_payer__">＋ 新增付款人</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {showNewPayer && (
+              <div className="flex gap-2 items-end p-3 rounded-lg border border-indigo-200 bg-indigo-50/40">
+                <Input
+                  placeholder="輸入新付款人名稱"
+                  value={newPayerName}
+                  onChange={e => setNewPayerName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddPayer() } }}
+                  className="flex-1"
+                />
+                <Button type="button" size="sm" onClick={handleAddPayer} disabled={!newPayerName.trim()} className="h-10">新增</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowNewPayer(false); setNewPayerName('') }} className="h-10">取消</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
