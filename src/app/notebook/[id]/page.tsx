@@ -355,24 +355,28 @@ export default function NotebookPage() {
               <div key={c.id} className="flex items-center gap-3 py-2 border-b border-zinc-100 last:border-0">
                 <span className="font-semibold text-zinc-900 w-12">{c.code}</span>
                 {editingCurrencyCode === c.code ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="text-sm text-zinc-500 shrink-0">1 {c.code} =</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      placeholder="匯率"
-                      value={editingRate}
-                      onChange={e => setEditingRate(e.target.value)}
-                      className="w-24"
-                    />
-                    <span className="text-sm text-zinc-500 shrink-0">TWD</span>
-                    <Button size="sm" onClick={() => handleSaveRate(c.code)} disabled={savingRate}>
-                      {savingRate ? '…' : '儲存'}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setEditingCurrencyCode(null); setEditingRate('') }}>
-                      取消
-                    </Button>
+                  <div className="flex flex-col gap-2 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-zinc-500 shrink-0">1 {c.code} =</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        placeholder="匯率"
+                        value={editingRate}
+                        onChange={e => setEditingRate(e.target.value)}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-zinc-500 shrink-0">TWD</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleSaveRate(c.code)} disabled={savingRate}>
+                        {savingRate ? '…' : '儲存'}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setEditingCurrencyCode(null); setEditingRate('') }}>
+                        取消
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <>
