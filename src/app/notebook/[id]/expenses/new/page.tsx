@@ -467,7 +467,6 @@ export default function NewExpensePage() {
                       placeholder="成員名稱"
                       value={inlineMemberName}
                       onChange={e => setInlineMemberName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMemberInline() } }}
                       className="h-8 text-sm"
                     />
                     <Button type="button" size="sm" onClick={handleAddMemberInline} disabled={!inlineMemberName.trim()} className="h-8">新增</Button>
@@ -488,6 +487,17 @@ export default function NewExpensePage() {
                     <label htmlFor={`split-${idx}`} className="flex-1 text-sm text-zinc-800">
                       {split.member_name}
                     </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSplits(prev => prev.filter((_, i) => i !== idx))
+                        setMembers(prev => prev.filter(m => m.name !== split.member_name))
+                      }}
+                      className="text-zinc-400 hover:text-red-500 transition-colors text-xs"
+                      title={`刪除 ${split.member_name}`}
+                    >
+                      ✕
+                    </button>
 
                     {splitMethod === 'equal' && split.checked && (
                       <span className="text-sm text-zinc-500 min-w-[5rem] text-right">
