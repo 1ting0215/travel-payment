@@ -152,9 +152,14 @@ export default function NotebookPage() {
 
   async function handleDeleteMember(name: string) {
     if (!confirm(`確定要刪除成員「${name}」嗎？`)) return
-    await fetch(`/api/notebooks/${id}/members?name=${encodeURIComponent(name)}`, {
+    const res = await fetch(`/api/notebooks/${id}/members?name=${encodeURIComponent(name)}`, {
       method: 'DELETE',
     })
+    if (!res.ok) {
+      const data = await res.json()
+      alert(data.error || '刪除失敗')
+      return
+    }
     await fetchData(identity)
   }
 

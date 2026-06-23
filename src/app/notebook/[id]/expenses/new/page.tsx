@@ -489,8 +489,14 @@ export default function NewExpensePage() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!confirm(`此處會刪除成員「${split.member_name}」，請確認。`)) return
+                        const res = await fetch(`/api/notebooks/${id}/members?name=${encodeURIComponent(split.member_name)}`, { method: 'DELETE' })
+                        if (!res.ok) {
+                          const data = await res.json()
+                          alert(data.error || '刪除失敗')
+                          return
+                        }
                         setSplits(prev => prev.filter((_, i) => i !== idx))
                         setMembers(prev => prev.filter(m => m.name !== split.member_name))
                       }}
