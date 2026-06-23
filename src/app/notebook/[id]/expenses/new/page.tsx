@@ -334,7 +334,7 @@ export default function NewExpensePage() {
                   <SelectContent>
                     {currencies.map(c => (
                       <SelectItem key={c.id} value={c.code}>
-                        <span>{c.code}{c.code === 'TWD' ? ' ★' : ''}{c.exchange_rate ? ` (1${c.code}=${c.exchange_rate}TWD)` : ''}</span>
+                        <span>{c.code}{c.code === 'TWD' ? ' ★' : ''}</span>
                       </SelectItem>
                     ))}
                     <SelectItem value="__new__">＋ 新增幣別</SelectItem>
@@ -477,8 +477,8 @@ export default function NewExpensePage() {
                       onChange={e => setInlineMemberName(e.target.value)}
                       className="h-8 text-sm"
                     />
-                    <Button type="button" size="sm" onClick={handleAddMemberInline} disabled={!inlineMemberName.trim()} className="h-8">新增</Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => { setAddMemberInline(false); setInlineMemberName('') }} className="h-8">取消</Button>
+                    <Button type="button" size="sm" onClick={handleAddMemberInline} disabled={!inlineMemberName.trim()} className="h-8 shrink-0 whitespace-nowrap">新增</Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => { setAddMemberInline(false); setInlineMemberName('') }} className="h-8 shrink-0 whitespace-nowrap">取消</Button>
                   </div>
                 )}
                 {splits.map((split, idx) => (

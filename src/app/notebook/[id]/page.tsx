@@ -263,7 +263,7 @@ export default function NotebookPage() {
   const { notebook, members, currencies } = data!
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-zinc-50 overflow-x-hidden">
       {/* Identity modal */}
       <Dialog open={identityOpen} onOpenChange={() => {}}>
         <DialogContent className="mx-4">
