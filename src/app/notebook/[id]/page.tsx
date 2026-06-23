@@ -150,6 +150,14 @@ export default function NotebookPage() {
     }
   }
 
+  async function handleDeleteMember(name: string) {
+    if (!confirm(`確定要刪除成員「${name}」嗎？`)) return
+    await fetch(`/api/notebooks/${id}/members?name=${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    })
+    await fetchData(identity)
+  }
+
   function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
       setCopied(true)
@@ -286,7 +294,6 @@ export default function NotebookPage() {
               placeholder="輸入你的名字"
               value={newMemberName}
               onChange={e => { setNewMemberName(e.target.value); setSelectedMember('') }}
-              onKeyDown={e => { if (e.key === 'Enter') handleIdentityConfirm() }}
             />
           </div>
 
@@ -309,8 +316,16 @@ export default function NotebookPage() {
           </DialogHeader>
           <div className="flex flex-wrap gap-2 mb-4">
             {members.map(m => (
-              <span key={m.id} className="rounded-lg px-3 py-1.5 text-sm bg-zinc-100 text-zinc-700 border border-zinc-200">
+              <span key={m.id} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm bg-zinc-100 text-zinc-700 border border-zinc-200">
                 {m.name}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteMember(m.name)}
+                  className="ml-1 text-zinc-400 hover:text-red-500 transition-colors"
+                  title={`刪除 ${m.name}`}
+                >
+                  ✕
+                </button>
               </span>
             ))}
             {members.length === 0 && <p className="text-sm text-zinc-400">尚無成員</p>}
@@ -320,7 +335,6 @@ export default function NotebookPage() {
               placeholder="輸入成員名稱"
               value={addMemberName}
               onChange={e => setAddMemberName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAddMember() }}
             />
             <Button onClick={handleAddMember} disabled={addMemberLoading || !addMemberName.trim()}>
               {addMemberLoading ? '…' : '新增'}
