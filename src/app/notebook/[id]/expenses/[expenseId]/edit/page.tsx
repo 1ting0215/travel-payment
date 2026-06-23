@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import type { Member, Currency } from '@/types'
+import type { Member, Currency, Expense } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,13 +24,10 @@ interface SplitEntry {
   checked: boolean
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-export default function NewExpensePage() {
-  const params = useParams<{ id: string }>()
+export default function EditExpensePage() {
+  const params = useParams<{ id: string; expenseId: string }>()
   const id = params.id
+  const expenseId = params.expenseId
   const router = useRouter()
 
   const [members, setMembers] = useState<Member[]>([])
@@ -39,7 +36,7 @@ export default function NewExpensePage() {
 
   // Form state
   const [title, setTitle] = useState('')
-  const [date, setDate] = useState(today())
+  const [date, setDate] = useState('')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState('')
   const [payer, setPayer] = useState('')
@@ -48,11 +45,9 @@ export default function NewExpensePage() {
   const [splits, setSplits] = useState<SplitEntry[]>([])
   const [notes, setNotes] = useState('')
   const [receipt, setReceipt] = useState<File | null>(null)
+  const [existingReceiptUrl, setExistingReceiptUrl] = useState<string | null>(null)
   const [addMemberInline, setAddMemberInline] = useState(false)
   const [inlineMemberName, setInlineMemberName] = useState('')
-  const [newCurrency, setNewCurrency] = useState('')
-  const [newCurrencyRate, setNewCurrencyRate] = useState('')
-  const [showNewCurrency, setShowNewCurrency] = useState(false)
   const [showNewPayer, setShowNewPayer] = useState(false)
   const [newPayerName, setNewPayerName] = useState('')
 
@@ -60,48 +55,52 @@ export default function NewExpensePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const initSplits = useCallback((memberList: Member[]) => {
-    setSplits(memberList.map(m => ({
-      member_name: m.name,
-      amount: 0,
-      ratio: 1,
-      checked: true,
-    })))
-  }, [])
-
   useEffect(() => {
     const stored = sessionStorage.getItem(`notebook_identity_${id}`)
     if (stored) setIdentity(stored)
 
-    fetch(`/api/notebooks/${id}`)
-      .then(r => r.json())
-      .then(async data => {
-        setMembers(data.members ?? [])
-        let currList: Currency[] = data.currencies ?? []
+    Promise.all([
+      fetch(`/api/notebooks/${id}`).then(r => r.json()),
+      fetch(`/api/expenses/${expenseId}`).then(r => r.json()),
+    ]).then(([notebookData, expense]: [{ members: Member[]; currencies: Currency[] }, Expense]) => {
+      const memberList = notebookData.members ?? []
+      const currList = notebookData.currencies ?? []
+      setMembers(memberList)
+      setCurrencies(currList)
 
-        // Auto-initialize TWD if no currencies exist
-        if (currList.length === 0) {
-          await fetch(`/api/notebooks/${id}/currencies`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: 'TWD' }),
-          })
-          currList = [{ id: crypto.randomUUID(), notebook_id: id, code: 'TWD', exchange_rate: null, base_currency: null }]
+      // Fill form with expense data
+      setTitle(expense.title)
+      setDate(expense.date)
+      setAmount(String(expense.amount))
+      setCurrency(expense.currency)
+      setPayer(expense.payer)
+      setVisibility(expense.visibility)
+      setSplitMethod(expense.split_method)
+      setNotes(expense.notes ?? '')
+      setExistingReceiptUrl(expense.receipt_url)
+
+      // Build splits from expense data
+      const expenseSplits = expense.splits ?? []
+      const splitEntries: SplitEntry[] = memberList.map(m => {
+        const existing = expenseSplits.find(s => s.member_name === m.name)
+        return {
+          member_name: m.name,
+          amount: existing?.amount ?? 0,
+          ratio: existing?.ratio ?? 1,
+          checked: !!existing,
         }
-
-        setCurrencies(currList)
-        // Default to TWD if available, otherwise first
-        const twd = currList.find(c => c.code === 'TWD')
-        setCurrency(twd ? 'TWD' : currList[0].code)
-
-        if (stored) setPayer(stored)
-        else if (data.members?.length > 0) setPayer(data.members[0].name)
-        initSplits(data.members ?? [])
       })
-      .finally(() => setLoading(false))
-  }, [id, initSplits])
+      // Add splits for members not in the member list
+      for (const s of expenseSplits) {
+        if (!splitEntries.find(e => e.member_name === s.member_name)) {
+          splitEntries.push({ member_name: s.member_name, amount: s.amount, ratio: s.ratio ?? 1, checked: true })
+        }
+      }
+      setSplits(splitEntries)
+    }).finally(() => setLoading(false))
+  }, [id, expenseId])
 
-  // Recalculate equal split when amount or checked members change
+  // Recalculate equal split
   useEffect(() => {
     if (splitMethod !== 'equal') return
     const checked = splits.filter(s => s.checked)
@@ -117,7 +116,7 @@ export default function NewExpensePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [amount, splitMethod, splits.map(s => s.checked).join(',')])
 
-  // Recalculate ratio split when amount or ratios change
+  // Recalculate ratio split
   useEffect(() => {
     if (splitMethod !== 'ratio') return
     const numericAmount = parseFloat(amount) || 0
@@ -133,22 +132,6 @@ export default function NewExpensePage() {
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [amount, splitMethod, splits.map(s => `${s.ratio}:${s.checked}`).join(',')])
-
-  async function handleAddCurrency() {
-    if (!newCurrency.trim()) return
-    const code = newCurrency.trim().toUpperCase()
-    const rate = parseFloat(newCurrencyRate) || null
-    await fetch(`/api/notebooks/${id}/currencies`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }),
-    })
-    setCurrencies(prev => [...prev, { id: crypto.randomUUID(), notebook_id: id, code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }])
-    setCurrency(code)
-    setNewCurrency('')
-    setNewCurrencyRate('')
-    setShowNewCurrency(false)
-  }
 
   async function handleAddMemberInline() {
     if (!inlineMemberName.trim()) return
@@ -220,8 +203,7 @@ export default function NewExpensePage() {
 
     setSubmitting(true)
     try {
-      // Handle receipt upload if provided
-      let receiptUrl: string | null = null
+      let receiptUrl: string | null = existingReceiptUrl
       if (receipt) {
         const form = new FormData()
         form.append('file', receipt)
@@ -238,11 +220,10 @@ export default function NewExpensePage() {
         receiptUrl = url
       }
 
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
+      const res = await fetch(`/api/expenses/${expenseId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          notebook_id: id,
           title: title.trim(),
           date,
           amount: numericAmount,
@@ -252,14 +233,13 @@ export default function NewExpensePage() {
           splits: activeSplits,
           notes: notes.trim() || null,
           visibility,
-          created_by: identity || payer,
           receipt_url: receiptUrl,
         }),
       })
 
       if (!res.ok) {
         const data = await res.json()
-        setError(data.error ?? '新增失敗')
+        setError(data.error ?? '更新失敗')
         return
       }
 
@@ -290,7 +270,7 @@ export default function NewExpensePage() {
           >
             ← 返回
           </button>
-          <h1 className="font-semibold text-zinc-900">新增費用</h1>
+          <h1 className="font-semibold text-zinc-900">編輯費用</h1>
         </div>
       </div>
 
@@ -324,10 +304,7 @@ export default function NewExpensePage() {
               </div>
               <div className="flex flex-col gap-1.5 w-28 shrink-0">
                 <label className="text-sm font-medium text-zinc-700">幣別 <span className="text-red-500">*</span></label>
-                <Select value={currency} onValueChange={val => {
-                  if (val === '__new__') setShowNewCurrency(true)
-                  else { setCurrency(val); setShowNewCurrency(false) }
-                }}>
+                <Select value={currency} onValueChange={setCurrency}>
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="幣別" />
                   </SelectTrigger>
@@ -337,35 +314,10 @@ export default function NewExpensePage() {
                         <span>{c.code}{c.code === 'TWD' ? ' ★' : ''}{c.exchange_rate ? ` (1${c.code}=${c.exchange_rate}TWD)` : ''}</span>
                       </SelectItem>
                     ))}
-                    <SelectItem value="__new__">＋ 新增幣別</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            {showNewCurrency && (
-              <div className="flex flex-col gap-2 p-3 rounded-lg border border-indigo-200 bg-indigo-50/40">
-                <Input
-                  placeholder="幣別代碼，例：JPY"
-                  value={newCurrency}
-                  onChange={e => setNewCurrency(e.target.value.toUpperCase())}
-                />
-                <div className="flex items-center gap-2 text-sm text-zinc-600">
-                  <span className="shrink-0 font-medium">1 {newCurrency || '???'} =</span>
-                  <Input
-                    type="number" min="0" step="0.0001" placeholder="匯率"
-                    value={newCurrencyRate}
-                    onChange={e => setNewCurrencyRate(e.target.value)}
-                    className="w-28"
-                  />
-                  <span className="shrink-0 font-medium text-zinc-800">TWD</span>
-                </div>
-                <p className="text-xs text-zinc-400">匯率選填，留空則不顯示換算</p>
-                <div className="flex gap-2">
-                  <Button type="button" onClick={handleAddCurrency} size="sm" disabled={!newCurrency.trim()}>新增</Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => { setShowNewCurrency(false); setNewCurrency(''); setNewCurrencyRate('') }}>取消</Button>
-                </div>
-              </div>
-            )}
 
             {/* Payer */}
             <div className="flex flex-col gap-1.5">
@@ -391,11 +343,10 @@ export default function NewExpensePage() {
                   placeholder="輸入新付款人名稱"
                   value={newPayerName}
                   onChange={e => setNewPayerName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddPayer() } }}
                   className="flex-1"
                 />
-                <Button type="button" size="sm" onClick={handleAddPayer} disabled={!newPayerName.trim()} className="h-10">新增</Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowNewPayer(false); setNewPayerName('') }} className="h-10">取消</Button>
+                <Button type="button" size="sm" onClick={handleAddPayer} disabled={!newPayerName.trim()} className="h-10 shrink-0 whitespace-nowrap">新增</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowNewPayer(false); setNewPayerName('') }} className="h-10 shrink-0 whitespace-nowrap">取消</Button>
               </div>
             )}
           </CardContent>
@@ -477,8 +428,8 @@ export default function NewExpensePage() {
                       onChange={e => setInlineMemberName(e.target.value)}
                       className="h-8 text-sm"
                     />
-                    <Button type="button" size="sm" onClick={handleAddMemberInline} disabled={!inlineMemberName.trim()} className="h-8">新增</Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => { setAddMemberInline(false); setInlineMemberName('') }} className="h-8">取消</Button>
+                    <Button type="button" size="sm" onClick={handleAddMemberInline} disabled={!inlineMemberName.trim()} className="h-8 shrink-0 whitespace-nowrap">新增</Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => { setAddMemberInline(false); setInlineMemberName('') }} className="h-8 shrink-0 whitespace-nowrap">取消</Button>
                   </div>
                 )}
                 {splits.map((split, idx) => (
@@ -495,24 +446,6 @@ export default function NewExpensePage() {
                     <label htmlFor={`split-${idx}`} className="flex-1 text-sm text-zinc-800">
                       {split.member_name}
                     </label>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!confirm(`此處會刪除成員「${split.member_name}」，請確認。`)) return
-                        const res = await fetch(`/api/notebooks/${id}/members?name=${encodeURIComponent(split.member_name)}`, { method: 'DELETE' })
-                        if (!res.ok) {
-                          const data = await res.json()
-                          alert(data.error || '刪除失敗')
-                          return
-                        }
-                        setSplits(prev => prev.filter((_, i) => i !== idx))
-                        setMembers(prev => prev.filter(m => m.name !== split.member_name))
-                      }}
-                      className="text-zinc-400 hover:text-red-500 transition-colors text-xs"
-                      title={`刪除 ${split.member_name}`}
-                    >
-                      ✕
-                    </button>
 
                     {splitMethod === 'equal' && split.checked && (
                       <span className="text-sm text-zinc-500 min-w-[5rem] text-right">
@@ -575,6 +508,9 @@ export default function NewExpensePage() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-zinc-700">收據照片（選填）</label>
+              {existingReceiptUrl && !receipt && (
+                <p className="text-xs text-indigo-600">已有收據，重新上傳將取代</p>
+              )}
               <input
                 type="file"
                 accept="image/*"
@@ -591,7 +527,7 @@ export default function NewExpensePage() {
         )}
 
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-          {submitting ? '新增中…' : '新增費用'}
+          {submitting ? '更新中…' : '更新費用'}
         </Button>
       </form>
     </div>

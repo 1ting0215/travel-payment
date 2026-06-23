@@ -607,15 +607,16 @@ function ExpenseList({ expenses, identity }: { expenses: Expense[]; identity: st
   return (
     <div className="flex flex-col gap-3">
       {expenses.map(expense => (
-        <ExpenseCard key={expense.id} expense={expense} identity={identity} />
+        <ExpenseCard key={expense.id} expense={expense} identity={identity} notebookId={id} />
       ))}
     </div>
   )
 }
 
-function ExpenseCard({ expense, identity }: { expense: Expense; identity: string | null }) {
+function ExpenseCard({ expense, identity, notebookId }: { expense: Expense; identity: string | null; notebookId: string }) {
   const isOwn = expense.created_by === identity
   const isPrivate = expense.visibility === 'private'
+  const router = useRouter()
 
   const dateStr = new Date(expense.date).toLocaleDateString('zh-TW', {
     month: 'short',
@@ -623,7 +624,10 @@ function ExpenseCard({ expense, identity }: { expense: Expense; identity: string
   })
 
   return (
-    <Card className={isOwn && isPrivate ? 'border-indigo-100 bg-indigo-50/30' : ''}>
+    <Card
+      className={`cursor-pointer hover:shadow-md transition-shadow ${isOwn && isPrivate ? 'border-indigo-100 bg-indigo-50/30' : ''}`}
+      onClick={() => router.push(`/notebook/${notebookId}/expenses/${expense.id}/edit`)}
+    >
       <CardContent className="pt-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">

@@ -22,6 +22,45 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+    const { title, date, amount, currency, payer, split_method, splits, notes, visibility, receipt_url } = body
+
+    const supabase = createClient()
+
+    const { error: updateError } = await supabase
+      .from('tp_expenses')
+      .update({ title, date, amount, currency, payer, split_method, notes: notes ?? null, visibility, receipt_url: receipt_url ?? null })
+      .eq('id', id)
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    // Replace splits: delete old, insert new
+    await supabase.from('tp_expense_splits').delete().eq('expense_id', id)
+
+    if (splits && splits.length > 0) {
+      const splitRows = splits.map((s: { member_name: string; amount: number; ratio?: number }) => ({
+        expense_id: id,
+        member_name: s.member_name,
+        amount: s.amount,
+        ratio: s.ratio ?? null,
+      }))
+      const { error: splitsError } = await supabase.from('tp_expense_splits').insert(splitRows).select()
+      if (splitsError) {
+        return NextResponse.json({ error: splitsError.message }, { status: 500 })
+      }
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
