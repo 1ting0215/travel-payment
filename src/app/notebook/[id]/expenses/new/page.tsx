@@ -107,32 +107,43 @@ export default function NewExpensePage() {
     const checked = splits.filter(s => s.checked)
     if (checked.length === 0) return
     const numericAmount = parseFloat(amount) || 0
-    const each = numericAmount / checked.length
+    const each = Math.floor((numericAmount / checked.length) * 100) / 100
+    const totalAssigned = Math.round(each * checked.length * 100) / 100
+    const remainder = Math.round((numericAmount - totalAssigned) * 100) / 100
+    // Assign remainder to payer, or first checked member
+    const remainderTarget = checked.find(s => s.member_name === payer)?.member_name ?? checked[0].member_name
     setSplits(prev =>
       prev.map(s => ({
         ...s,
-        amount: s.checked ? Math.round(each * 100) / 100 : 0,
+        amount: s.checked
+          ? (s.member_name === remainderTarget ? each + remainder : each)
+          : 0,
       }))
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, splitMethod, splits.map(s => s.checked).join(',')])
+  }, [amount, splitMethod, payer, splits.map(s => s.checked).join(',')])
 
   // Recalculate ratio split when amount or ratios change
   useEffect(() => {
     if (splitMethod !== 'ratio') return
     const numericAmount = parseFloat(amount) || 0
-    const totalRatio = splits.filter(s => s.checked).reduce((sum, s) => sum + s.ratio, 0)
+    const checked = splits.filter(s => s.checked)
+    const totalRatio = checked.reduce((sum, s) => sum + s.ratio, 0)
     if (totalRatio === 0) return
+    const amounts = checked.map(s => Math.floor((numericAmount * s.ratio / totalRatio) * 100) / 100)
+    const totalAssigned = Math.round(amounts.reduce((a, b) => a + b, 0) * 100) / 100
+    const remainder = Math.round((numericAmount - totalAssigned) * 100) / 100
+    const remainderTarget = checked.find(s => s.member_name === payer)?.member_name ?? checked[0].member_name
+    let checkedIdx = 0
     setSplits(prev =>
-      prev.map(s => ({
-        ...s,
-        amount: s.checked
-          ? Math.round((numericAmount * s.ratio / totalRatio) * 100) / 100
-          : 0,
-      }))
+      prev.map(s => {
+        if (!s.checked) return { ...s, amount: 0 }
+        const base = amounts[checkedIdx++]
+        return { ...s, amount: s.member_name === remainderTarget ? base + remainder : base }
+      })
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, splitMethod, splits.map(s => `${s.ratio}:${s.checked}`).join(',')])
+  }, [amount, splitMethod, payer, splits.map(s => `${s.ratio}:${s.checked}`).join(',')])
 
   async function handleAddCurrency() {
     if (!newCurrency.trim()) return
