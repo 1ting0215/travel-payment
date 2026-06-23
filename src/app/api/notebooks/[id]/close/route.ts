@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Notebook not found' }, { status: 404 })
     }
 
-    if (notebook.creator_email !== creator_email) {
+    if (notebook.creator_email.trim().toLowerCase() !== creator_email.trim().toLowerCase()) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
