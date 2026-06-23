@@ -690,12 +690,12 @@ function CollectionTab({
   const myCollection = collections.find(c => c.member_name === identity)
 
   useEffect(() => {
-    if (myCollection) {
-      setAccountInfo(myCollection.account_info ?? '')
-      setNotes(myCollection.notes ?? '')
-      setQrPreview(myCollection.qr_code_url ?? null)
-    }
-  }, [myCollection])
+    setAccountInfo(myCollection?.account_info ?? '')
+    setNotes(myCollection?.notes ?? '')
+    setQrPreview(myCollection?.qr_code_url ?? null)
+    setQrFile(null)
+    setEditing(false)
+  }, [myCollection, identity])
 
   function handleQrChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
