@@ -80,6 +80,6 @@ export function generateTransferList(balances: Balance[]): SettlementItem[] {
 
 export function formatTransferText(items: SettlementItem[]): string {
   return items
-    .map(item => `${item.from_member} -> ${item.to_member}: ${item.amount.toFixed(2)}`)
+    .map(item => `${item.from_member} -> ${item.to_member}: ${item.amount.toFixed(2)} ${item.currency}`)
     .join('\n')
 }
