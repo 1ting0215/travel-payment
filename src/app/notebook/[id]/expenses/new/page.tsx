@@ -326,7 +326,7 @@ export default function NewExpensePage() {
                   <SelectContent>
                     {currencies.map(c => (
                       <SelectItem key={c.id} value={c.code}>
-                        <span>{c.code}{c.code === 'TWD' ? ' ★' : ''}{c.exchange_rate ? ` (1TWD=${c.exchange_rate})` : ''}</span>
+                        <span>{c.code}{c.code === 'TWD' ? ' ★' : ''}{c.exchange_rate ? ` (1${c.code}=${c.exchange_rate}TWD)` : ''}</span>
                       </SelectItem>
                     ))}
                     <SelectItem value="__new__">＋ 新增幣別</SelectItem>
@@ -342,14 +342,14 @@ export default function NewExpensePage() {
                   onChange={e => setNewCurrency(e.target.value.toUpperCase())}
                 />
                 <div className="flex items-center gap-2 text-sm text-zinc-600">
-                  <span className="shrink-0 font-medium">1 TWD =</span>
+                  <span className="shrink-0 font-medium">1 {newCurrency || '???'} =</span>
                   <Input
                     type="number" min="0" step="0.0001" placeholder="匯率"
                     value={newCurrencyRate}
                     onChange={e => setNewCurrencyRate(e.target.value)}
                     className="w-28"
                   />
-                  <span className="shrink-0 font-medium text-zinc-800">{newCurrency || '???'}</span>
+                  <span className="shrink-0 font-medium text-zinc-800">TWD</span>
                 </div>
                 <p className="text-xs text-zinc-400">匯率選填，留空則不顯示換算</p>
                 <div className="flex gap-2">

@@ -161,7 +161,7 @@ export default function SettlementPage() {
                 <Badge variant="default" className="text-sm px-3 py-1">{curr}</Badge>
                 {exchInfo && (
                   <span className="text-xs text-zinc-400">
-                    1 TWD = {exchInfo.rate} {curr}
+                    1 {curr} = {exchInfo.rate} TWD
                   </span>
                 )}
               </div>

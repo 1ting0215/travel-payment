@@ -356,7 +356,7 @@ export default function NotebookPage() {
                 <span className="font-semibold text-zinc-900 w-12">{c.code}</span>
                 {editingCurrencyCode === c.code ? (
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="text-sm text-zinc-500 shrink-0">1 TWD =</span>
+                    <span className="text-sm text-zinc-500 shrink-0">1 {c.code} =</span>
                     <Input
                       type="number"
                       min="0"
@@ -366,7 +366,7 @@ export default function NotebookPage() {
                       onChange={e => setEditingRate(e.target.value)}
                       className="w-24"
                     />
-                    <span className="text-sm text-zinc-500 shrink-0">{c.code}</span>
+                    <span className="text-sm text-zinc-500 shrink-0">TWD</span>
                     <Button size="sm" onClick={() => handleSaveRate(c.code)} disabled={savingRate}>
                       {savingRate ? '…' : '儲存'}
                     </Button>
@@ -378,7 +378,7 @@ export default function NotebookPage() {
                   <>
                     <span className="text-sm text-zinc-500 flex-1">
                       {c.exchange_rate
-                        ? `1 TWD = ${c.exchange_rate} ${c.code}`
+                        ? `1 ${c.code} = ${c.exchange_rate} TWD`
                         : '未設匯率'}
                     </span>
                     <Button
