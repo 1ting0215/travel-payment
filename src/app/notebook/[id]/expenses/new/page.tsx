@@ -490,7 +490,7 @@ export default function NewExpensePage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (!confirm(`確定要刪除成員「${split.member_name}」嗎？此處會刪除成員。`)) return
+                        if (!confirm(`此處會刪除成員「${split.member_name}」，請確認。`)) return
                         setSplits(prev => prev.filter((_, i) => i !== idx))
                         setMembers(prev => prev.filter(m => m.name !== split.member_name))
                       }}
