@@ -322,14 +322,14 @@ export default function NewExpensePage() {
                 <label className="text-sm font-medium text-zinc-700">金額 <span className="text-red-500">*</span></label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} required />
               </div>
-              <div className="flex flex-col gap-1.5 w-28 shrink-0">
+              <div className="flex flex-col gap-1.5 w-24 shrink-0">
                 <label className="text-sm font-medium text-zinc-700">幣別 <span className="text-red-500">*</span></label>
                 <Select value={currency} onValueChange={val => {
                   if (val === '__new__') setShowNewCurrency(true)
                   else { setCurrency(val); setShowNewCurrency(false) }
                 }}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="幣別" />
+                  <SelectTrigger className="h-10 overflow-hidden">
+                    <span className="truncate">{currency || '幣別'}</span>
                   </SelectTrigger>
                   <SelectContent>
                     {currencies.map(c => (
