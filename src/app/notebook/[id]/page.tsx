@@ -336,7 +336,7 @@ export default function NotebookPage() {
               value={addMemberName}
               onChange={e => setAddMemberName(e.target.value)}
             />
-            <Button onClick={handleAddMember} disabled={addMemberLoading || !addMemberName.trim()}>
+            <Button onClick={handleAddMember} disabled={addMemberLoading || !addMemberName.trim()} className="shrink-0 whitespace-nowrap">
               {addMemberLoading ? '…' : '新增'}
             </Button>
           </div>
