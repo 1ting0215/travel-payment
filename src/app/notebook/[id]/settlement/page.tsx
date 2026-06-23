@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx'
 import type { Balance, SettlementItem, Currency } from '@/types'
 import { formatTransferText } from '@/lib/settlement'
 import { Button } from '@/components/ui/button'
@@ -77,6 +78,90 @@ export default function SettlementPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  function handleDownloadExcel() {
+    if (!data) return
+    const wb = XLSX.utils.book_new()
+
+    for (const curr of allCurrencies) {
+      const balances = balancesByCurrency[curr] ?? []
+      const transfers = transfersByCurrency[curr] ?? []
+      const exchInfo = findExchangeRate(curr)
+
+      const sheetData: (string | number)[][] = []
+
+      // 收支明細
+      if (balances.length > 0) {
+        if (exchInfo) {
+          sheetData.push(['【收支明細】', '', '', '', '', `1 ${curr} = ${exchInfo.rate} TWD`])
+          sheetData.push(['成員', '已付', `已付(${exchInfo.base})`, '應付', `應付(${exchInfo.base})`, '淨額', `淨額(${exchInfo.base})`])
+          for (const b of balances) {
+            sheetData.push([
+              b.member,
+              Number(b.paid.toFixed(2)),
+              Number((b.paid * exchInfo.rate).toFixed(2)),
+              Number(b.owed.toFixed(2)),
+              Number((b.owed * exchInfo.rate).toFixed(2)),
+              Number(b.net.toFixed(2)),
+              Number((b.net * exchInfo.rate).toFixed(2)),
+            ])
+          }
+        } else {
+          sheetData.push(['【收支明細】'])
+          sheetData.push(['成員', '已付', '應付', '淨額'])
+          for (const b of balances) {
+            sheetData.push([
+              b.member,
+              Number(b.paid.toFixed(2)),
+              Number(b.owed.toFixed(2)),
+              Number(b.net.toFixed(2)),
+            ])
+          }
+        }
+      }
+
+      // 空行
+      sheetData.push([])
+
+      // 轉帳明細
+      if (transfers.length > 0) {
+        if (exchInfo) {
+          sheetData.push(['【轉帳明細】'])
+          sheetData.push(['付款人', '收款人', `金額(${curr})`, `金額(${exchInfo.base})`])
+          for (const t of transfers) {
+            sheetData.push([
+              t.from_member,
+              t.to_member,
+              Number(t.amount.toFixed(2)),
+              Number((t.amount * exchInfo.rate).toFixed(2)),
+            ])
+          }
+        } else {
+          sheetData.push(['【轉帳明細】'])
+          sheetData.push(['付款人', '收款人', `金額(${curr})`])
+          for (const t of transfers) {
+            sheetData.push([t.from_member, t.to_member, Number(t.amount.toFixed(2))])
+          }
+        }
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(sheetData)
+
+      // Auto column widths
+      const colWidths = sheetData.reduce<number[]>((widths, row) => {
+        row.forEach((cell, i) => {
+          const len = String(cell).length + 2
+          widths[i] = Math.max(widths[i] ?? 8, len)
+        })
+        return widths
+      }, [])
+      ws['!cols'] = colWidths.map(w => ({ wch: Math.min(w, 20) }))
+
+      XLSX.utils.book_append_sheet(wb, ws, curr)
+    }
+
+    XLSX.writeFile(wb, '結算明細.xlsx')
   }
 
   async function handleSave() {
@@ -260,6 +345,15 @@ export default function SettlementPage() {
         {/* Actions */}
         {data && data.transfers.length > 0 && (
           <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={handleDownloadExcel}
+            >
+              下載 Excel
+            </Button>
+
             <Button
               variant="outline"
               size="lg"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import type { SettlementItem, CollectionInfo, RemittanceStatus } from '@/types'
+import type { SettlementItem, CollectionInfo, RemittanceStatus, Currency } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +40,7 @@ export default function RemittancePage() {
 
   const [transfers, setTransfers] = useState<SettlementItem[]>([])
   const [collections, setCollections] = useState<CollectionInfo[]>([])
+  const [currencies, setCurrencies] = useState<Currency[]>([])
   const [identity, setIdentity] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
@@ -48,9 +49,10 @@ export default function RemittancePage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [savedRes, collectionRes] = await Promise.all([
+      const [savedRes, collectionRes, notebookRes] = await Promise.all([
         fetch(`/api/notebooks/${id}/settlement-items`),
         fetch(`/api/notebooks/${id}/collection`),
+        fetch(`/api/notebooks/${id}`),
       ])
 
       if (savedRes.ok) {
@@ -71,6 +73,11 @@ export default function RemittancePage() {
 
       if (collectionRes.ok) {
         setCollections(await collectionRes.json())
+      }
+
+      if (notebookRes.ok) {
+        const notebookJson = await notebookRes.json()
+        setCurrencies(notebookJson.currencies ?? [])
       }
     } catch {
       setError('載入失敗')
@@ -139,6 +146,14 @@ export default function RemittancePage() {
 
   function getCollection(memberName: string): CollectionInfo | undefined {
     return collections.find(c => c.member_name === memberName)
+  }
+
+  function findExchangeRate(currencyCode: string): { rate: number; base: string } | null {
+    const c = currencies.find(c => c.code === currencyCode)
+    if (c?.exchange_rate && c.base_currency) {
+      return { rate: c.exchange_rate, base: c.base_currency }
+    }
+    return null
   }
 
   if (loading) return <div className="min-h-screen bg-zinc-50"><Spinner /></div>
@@ -210,6 +225,7 @@ export default function RemittancePage() {
                   key={item.id}
                   item={item}
                   collection={getCollection(item.to_member)}
+                  exchInfo={findExchangeRate(item.currency)}
                   isUpdating={updating === item.id}
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
@@ -233,6 +249,7 @@ export default function RemittancePage() {
                   key={item.id}
                   item={item}
                   collection={getCollection(item.to_member)}
+                  exchInfo={findExchangeRate(item.currency)}
                   isUpdating={updating === item.id}
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
@@ -257,6 +274,7 @@ export default function RemittancePage() {
                   key={item.id}
                   item={item}
                   collection={getCollection(item.to_member)}
+                  exchInfo={findExchangeRate(item.currency)}
                   isUpdating={updating === item.id}
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
@@ -275,6 +293,7 @@ export default function RemittancePage() {
 function TransferCard({
   item,
   collection,
+  exchInfo,
   isUpdating,
   onStatusUpdate,
   onProofUpload,
@@ -284,6 +303,7 @@ function TransferCard({
 }: {
   item: SettlementItem
   collection: CollectionInfo | undefined
+  exchInfo: { rate: number; base: string } | null
   isUpdating: boolean
   onStatusUpdate: (item: SettlementItem) => void
   onProofUpload: (item: SettlementItem, file: File) => void
@@ -305,6 +325,11 @@ function TransferCard({
             <p className="text-lg font-bold text-zinc-900 mt-1">
               {item.currency} {item.amount.toFixed(2)}
             </p>
+            {exchInfo && (
+              <p className="text-xs text-zinc-400">
+                ≈ {(item.amount * exchInfo.rate).toFixed(2)} {exchInfo.base}
+              </p>
+            )}
           </div>
           <Badge variant={STATUS_VARIANT[item.status]}>
             {STATUS_LABELS[item.status]}
