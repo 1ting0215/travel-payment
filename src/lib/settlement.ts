@@ -78,8 +78,11 @@ export function generateTransferList(balances: Balance[]): SettlementItem[] {
   return transfers
 }
 
-export function formatTransferText(items: SettlementItem[]): string {
+export function formatTransferText(items: SettlementItem[], decimalMap?: Record<string, number>): string {
   return items
-    .map(item => `${item.from_member} -> ${item.to_member}: ${item.amount.toFixed(2)} ${item.currency}`)
+    .map(item => {
+      const dp = decimalMap?.[item.currency] ?? 2
+      return `${item.from_member} -> ${item.to_member}: ${item.amount.toFixed(dp)} ${item.currency}`
+    })
     .join('\n')
 }

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
-    const { code, exchange_rate, base_currency } = body
+    const { code, exchange_rate, base_currency, decimal_places } = body
     const { id } = await params
 
     if (!code) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { data, error } = await supabase
       .from('tp_currencies')
       .upsert(
-        { notebook_id: id, code, exchange_rate: exchange_rate ?? null, base_currency: base_currency ?? null },
+        { notebook_id: id, code, exchange_rate: exchange_rate ?? null, base_currency: base_currency ?? null, decimal_places: decimal_places ?? 2 },
         { onConflict: 'notebook_id,code' }
       )
       .select()

@@ -68,6 +68,7 @@ export default function NotebookPage() {
   const [savingRate, setSavingRate] = useState(false)
   const [newCurrencyCode, setNewCurrencyCode] = useState('')
   const [newCurrencyRate, setNewCurrencyRate] = useState('')
+  const [newCurrencyDecimals, setNewCurrencyDecimals] = useState('2')
   const [addCurrencyLoading, setAddCurrencyLoading] = useState(false)
 
   const fetchData = useCallback(async (currentIdentity: string | null) => {
@@ -231,13 +232,14 @@ export default function NotebookPage() {
       const res = await fetch(`/api/notebooks/${id}/currencies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }),
+        body: JSON.stringify({ code, exchange_rate: rate, base_currency: rate ? 'TWD' : null, decimal_places: parseInt(newCurrencyDecimals) || 2 }),
       })
       if (res.ok) {
         const newCurr = await res.json()
         setData(prev => prev ? { ...prev, currencies: [...prev.currencies, newCurr] } : prev)
         setNewCurrencyCode('')
         setNewCurrencyRate('')
+        setNewCurrencyDecimals('2')
       }
     } finally {
       setAddCurrencyLoading(false)
@@ -425,6 +427,19 @@ export default function NotebookPage() {
                 />
                 <span className="text-xs text-zinc-500 shrink-0">TWD</span>
               </div>
+            </div>
+            <div className="flex gap-2 items-center">
+              <label className="text-xs text-zinc-500 shrink-0">小數位數</label>
+              <select
+                value={newCurrencyDecimals}
+                onChange={e => setNewCurrencyDecimals(e.target.value)}
+                className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-sm"
+              >
+                <option value="0">0（整數）</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
             </div>
             <Button
               size="sm"

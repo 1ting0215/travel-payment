@@ -71,9 +71,15 @@ export default function SettlementPage() {
     return null
   }
 
+  function getDecimals(currencyCode: string): number {
+    const c = currencies.find(c => c.code === currencyCode)
+    return c?.decimal_places ?? 2
+  }
+
   function handleCopy() {
     if (!data) return
-    const text = formatTransferText(data.transfers)
+    const decimalMap = Object.fromEntries(currencies.map(c => [c.code, c.decimal_places ?? 2]))
+    const text = formatTransferText(data.transfers, decimalMap)
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
@@ -89,6 +95,8 @@ export default function SettlementPage() {
       const transfers = transfersByCurrency[curr] ?? []
       const exchInfo = findExchangeRate(curr)
 
+      const dp = getDecimals(curr)
+      const baseDp = exchInfo ? getDecimals(exchInfo.base) : 2
       const sheetData: (string | number)[][] = []
 
       // 收支明細
@@ -99,12 +107,12 @@ export default function SettlementPage() {
           for (const b of balances) {
             sheetData.push([
               b.member,
-              Number(b.paid.toFixed(2)),
-              Number((b.paid * exchInfo.rate).toFixed(2)),
-              Number(b.owed.toFixed(2)),
-              Number((b.owed * exchInfo.rate).toFixed(2)),
-              Number(b.net.toFixed(2)),
-              Number((b.net * exchInfo.rate).toFixed(2)),
+              Number(b.paid.toFixed(dp)),
+              Number((b.paid * exchInfo.rate).toFixed(baseDp)),
+              Number(b.owed.toFixed(dp)),
+              Number((b.owed * exchInfo.rate).toFixed(baseDp)),
+              Number(b.net.toFixed(dp)),
+              Number((b.net * exchInfo.rate).toFixed(baseDp)),
             ])
           }
         } else {
@@ -113,9 +121,9 @@ export default function SettlementPage() {
           for (const b of balances) {
             sheetData.push([
               b.member,
-              Number(b.paid.toFixed(2)),
-              Number(b.owed.toFixed(2)),
-              Number(b.net.toFixed(2)),
+              Number(b.paid.toFixed(dp)),
+              Number(b.owed.toFixed(dp)),
+              Number(b.net.toFixed(dp)),
             ])
           }
         }
@@ -133,15 +141,15 @@ export default function SettlementPage() {
             sheetData.push([
               t.from_member,
               t.to_member,
-              Number(t.amount.toFixed(2)),
-              Number((t.amount * exchInfo.rate).toFixed(2)),
+              Number(t.amount.toFixed(dp)),
+              Number((t.amount * exchInfo.rate).toFixed(baseDp)),
             ])
           }
         } else {
           sheetData.push(['【轉帳明細】'])
           sheetData.push(['付款人', '收款人', `金額(${curr})`])
           for (const t of transfers) {
-            sheetData.push([t.from_member, t.to_member, Number(t.amount.toFixed(2))])
+            sheetData.push([t.from_member, t.to_member, Number(t.amount.toFixed(dp))])
           }
         }
       }
@@ -269,37 +277,41 @@ export default function SettlementPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {balances.map(b => (
+                          {balances.map(b => {
+                            const dp = getDecimals(curr)
+                            const baseDp = exchInfo ? getDecimals(exchInfo.base) : 2
+                            return (
                             <tr key={b.member} className="border-b border-zinc-50 last:border-0">
                               <td className="py-2.5 font-medium text-zinc-800">{b.member}</td>
                               <td className="py-2.5 text-right text-zinc-600">
-                                {b.paid.toFixed(2)}
+                                {b.paid.toFixed(dp)}
                                 {exchInfo && (
                                   <div className="text-xs text-zinc-400">
-                                    ≈ {(b.paid * exchInfo.rate).toFixed(2)} {exchInfo.base}
+                                    ≈ {(b.paid * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
                                   </div>
                                 )}
                               </td>
                               <td className="py-2.5 text-right text-zinc-600">
-                                {b.owed.toFixed(2)}
+                                {b.owed.toFixed(dp)}
                                 {exchInfo && (
                                   <div className="text-xs text-zinc-400">
-                                    ≈ {(b.owed * exchInfo.rate).toFixed(2)} {exchInfo.base}
+                                    ≈ {(b.owed * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
                                   </div>
                                 )}
                               </td>
                               <td className="py-2.5 text-right">
                                 <span className={b.net >= 0 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
-                                  {b.net >= 0 ? '+' : ''}{b.net.toFixed(2)}
+                                  {b.net >= 0 ? '+' : ''}{b.net.toFixed(dp)}
                                 </span>
                                 {exchInfo && (
                                   <div className="text-xs text-zinc-400">
-                                    ≈ {(b.net * exchInfo.rate).toFixed(2)} {exchInfo.base}
+                                    ≈ {(b.net * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
                                   </div>
                                 )}
                               </td>
                             </tr>
-                          ))}
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -315,7 +327,10 @@ export default function SettlementPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-col gap-3">
-                      {transfers.map((t, idx) => (
+                      {transfers.map((t, idx) => {
+                        const dp = getDecimals(curr)
+                        const baseDp = exchInfo ? getDecimals(exchInfo.base) : 2
+                        return (
                         <div key={idx} className="flex items-center justify-between py-2 border-b border-zinc-50 last:border-0">
                           <div className="flex items-center gap-2 text-sm">
                             <span className="font-medium text-zinc-800">{t.from_member}</span>
@@ -324,16 +339,17 @@ export default function SettlementPage() {
                           </div>
                           <div className="text-right">
                             <span className="text-sm font-semibold text-zinc-900">
-                              {curr} {t.amount.toFixed(2)}
+                              {curr} {t.amount.toFixed(dp)}
                             </span>
                             {exchInfo && (
                               <div className="text-xs text-zinc-400">
-                                ≈ {(t.amount * exchInfo.rate).toFixed(2)} {exchInfo.base}
+                                ≈ {(t.amount * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
                               </div>
                             )}
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>

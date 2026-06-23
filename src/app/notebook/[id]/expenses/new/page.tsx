@@ -60,6 +60,8 @@ export default function NewExpensePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  const currDecimals = currencies.find(c => c.code === currency)?.decimal_places ?? 2
+
   const initSplits = useCallback((memberList: Member[]) => {
     setSplits(memberList.map(m => ({
       member_name: m.name,
@@ -86,7 +88,7 @@ export default function NewExpensePage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code: 'TWD' }),
           })
-          currList = [{ id: crypto.randomUUID(), notebook_id: id, code: 'TWD', exchange_rate: null, base_currency: null }]
+          currList = [{ id: crypto.randomUUID(), notebook_id: id, code: 'TWD', exchange_rate: null, base_currency: null, decimal_places: 0 }]
         }
 
         setCurrencies(currList)
@@ -107,9 +109,10 @@ export default function NewExpensePage() {
     const checked = splits.filter(s => s.checked)
     if (checked.length === 0) return
     const numericAmount = parseFloat(amount) || 0
-    const each = Math.floor((numericAmount / checked.length) * 100) / 100
-    const totalAssigned = Math.round(each * checked.length * 100) / 100
-    const remainder = Math.round((numericAmount - totalAssigned) * 100) / 100
+    const factor = Math.pow(10, currDecimals)
+    const each = Math.floor((numericAmount / checked.length) * factor) / factor
+    const totalAssigned = Math.round(each * checked.length * factor) / factor
+    const remainder = Math.round((numericAmount - totalAssigned) * factor) / factor
     // Assign remainder to payer, or first checked member
     const remainderTarget = checked.find(s => s.member_name === payer)?.member_name ?? checked[0].member_name
     setSplits(prev =>
@@ -121,7 +124,7 @@ export default function NewExpensePage() {
       }))
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, splitMethod, payer, splits.map(s => s.checked).join(',')])
+  }, [amount, splitMethod, payer, currDecimals, splits.map(s => s.checked).join(',')])
 
   // Recalculate ratio split when amount or ratios change
   useEffect(() => {
@@ -130,9 +133,10 @@ export default function NewExpensePage() {
     const checked = splits.filter(s => s.checked)
     const totalRatio = checked.reduce((sum, s) => sum + s.ratio, 0)
     if (totalRatio === 0) return
-    const amounts = checked.map(s => Math.floor((numericAmount * s.ratio / totalRatio) * 100) / 100)
-    const totalAssigned = Math.round(amounts.reduce((a, b) => a + b, 0) * 100) / 100
-    const remainder = Math.round((numericAmount - totalAssigned) * 100) / 100
+    const factor = Math.pow(10, currDecimals)
+    const amounts = checked.map(s => Math.floor((numericAmount * s.ratio / totalRatio) * factor) / factor)
+    const totalAssigned = Math.round(amounts.reduce((a, b) => a + b, 0) * factor) / factor
+    const remainder = Math.round((numericAmount - totalAssigned) * factor) / factor
     const remainderTarget = checked.find(s => s.member_name === payer)?.member_name ?? checked[0].member_name
     let checkedIdx = 0
     setSplits(prev =>
@@ -143,7 +147,7 @@ export default function NewExpensePage() {
       })
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, splitMethod, payer, splits.map(s => `${s.ratio}:${s.checked}`).join(',')])
+  }, [amount, splitMethod, payer, currDecimals, splits.map(s => `${s.ratio}:${s.checked}`).join(',')])
 
   async function handleAddCurrency() {
     if (!newCurrency.trim()) return
@@ -154,7 +158,7 @@ export default function NewExpensePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }),
     })
-    setCurrencies(prev => [...prev, { id: crypto.randomUUID(), notebook_id: id, code, exchange_rate: rate, base_currency: rate ? 'TWD' : null }])
+    setCurrencies(prev => [...prev, { id: crypto.randomUUID(), notebook_id: id, code, exchange_rate: rate, base_currency: rate ? 'TWD' : null, decimal_places: 2 }])
     setCurrency(code)
     setNewCurrency('')
     setNewCurrencyRate('')
@@ -224,7 +228,7 @@ export default function NewExpensePage() {
     if (visibility === 'shared' && splitMethod !== 'equal') {
       const splitTotal = activeSplits.reduce((sum, s) => sum + s.amount, 0)
       if (Math.abs(splitTotal - numericAmount) > 0.01) {
-        setError(`分攤金額合計 ${splitTotal.toFixed(2)} 與總金額 ${numericAmount.toFixed(2)} 不符`)
+        setError(`分攤金額合計 ${splitTotal.toFixed(currDecimals)} 與總金額 ${numericAmount.toFixed(currDecimals)} 不符`)
         return
       }
     }
@@ -527,7 +531,7 @@ export default function NewExpensePage() {
 
                     {splitMethod === 'equal' && split.checked && (
                       <span className="text-sm text-zinc-500 min-w-[5rem] text-right">
-                        {currency} {split.amount.toFixed(2)}
+                        {currency} {split.amount.toFixed(currDecimals)}
                       </span>
                     )}
 
@@ -559,7 +563,7 @@ export default function NewExpensePage() {
                           className="w-16 text-right"
                         />
                         <span className="text-xs text-zinc-400 min-w-[5rem]">
-                          ≈ {currency} {split.amount.toFixed(2)}
+                          ≈ {currency} {split.amount.toFixed(currDecimals)}
                         </span>
                       </div>
                     )}

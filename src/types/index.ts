@@ -24,6 +24,7 @@ export interface Currency {
   code: string
   exchange_rate: number | null
   base_currency: string | null
+  decimal_places: number
 }
 
 export interface Expense {

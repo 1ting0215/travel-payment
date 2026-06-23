@@ -156,6 +156,11 @@ export default function RemittancePage() {
     return null
   }
 
+  function getDecimals(currencyCode: string): number {
+    const c = currencies.find(c => c.code === currencyCode)
+    return c?.decimal_places ?? 2
+  }
+
   if (loading) return <div className="min-h-screen bg-zinc-50"><Spinner /></div>
 
   const myOutgoing = transfers.filter(t => t.from_member === identity)
@@ -226,6 +231,8 @@ export default function RemittancePage() {
                   item={item}
                   collection={getCollection(item.to_member)}
                   exchInfo={findExchangeRate(item.currency)}
+                  decimals={getDecimals(item.currency)}
+                  baseDecimals={findExchangeRate(item.currency) ? getDecimals(findExchangeRate(item.currency)!.base) : 2}
                   isUpdating={updating === item.id}
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
@@ -250,6 +257,8 @@ export default function RemittancePage() {
                   item={item}
                   collection={getCollection(item.to_member)}
                   exchInfo={findExchangeRate(item.currency)}
+                  decimals={getDecimals(item.currency)}
+                  baseDecimals={findExchangeRate(item.currency) ? getDecimals(findExchangeRate(item.currency)!.base) : 2}
                   isUpdating={updating === item.id}
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
@@ -275,6 +284,8 @@ export default function RemittancePage() {
                   item={item}
                   collection={getCollection(item.to_member)}
                   exchInfo={findExchangeRate(item.currency)}
+                  decimals={getDecimals(item.currency)}
+                  baseDecimals={findExchangeRate(item.currency) ? getDecimals(findExchangeRate(item.currency)!.base) : 2}
                   isUpdating={updating === item.id}
                   onStatusUpdate={handleStatusUpdate}
                   onProofUpload={handleProofUpload}
@@ -294,6 +305,8 @@ function TransferCard({
   item,
   collection,
   exchInfo,
+  decimals = 2,
+  baseDecimals = 2,
   isUpdating,
   onStatusUpdate,
   onProofUpload,
@@ -304,6 +317,8 @@ function TransferCard({
   item: SettlementItem
   collection: CollectionInfo | undefined
   exchInfo: { rate: number; base: string } | null
+  decimals?: number
+  baseDecimals?: number
   isUpdating: boolean
   onStatusUpdate: (item: SettlementItem) => void
   onProofUpload: (item: SettlementItem, file: File) => void
@@ -323,11 +338,11 @@ function TransferCard({
               <span className="font-semibold text-zinc-900">{item.to_member}</span>
             </div>
             <p className="text-lg font-bold text-zinc-900 mt-1">
-              {item.currency} {item.amount.toFixed(2)}
+              {item.currency} {item.amount.toFixed(decimals)}
             </p>
             {exchInfo && (
               <p className="text-xs text-zinc-400">
-                ≈ {(item.amount * exchInfo.rate).toFixed(2)} {exchInfo.base}
+                ≈ {(item.amount * exchInfo.rate).toFixed(baseDecimals)} {exchInfo.base}
               </p>
             )}
           </div>

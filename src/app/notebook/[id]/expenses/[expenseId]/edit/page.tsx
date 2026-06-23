@@ -55,6 +55,8 @@ export default function EditExpensePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  const currDecimals = currencies.find(c => c.code === currency)?.decimal_places ?? 2
+
   useEffect(() => {
     const stored = sessionStorage.getItem(`notebook_identity_${id}`)
     if (stored) setIdentity(stored)
@@ -106,9 +108,10 @@ export default function EditExpensePage() {
     const checked = splits.filter(s => s.checked)
     if (checked.length === 0) return
     const numericAmount = parseFloat(amount) || 0
-    const each = Math.floor((numericAmount / checked.length) * 100) / 100
-    const totalAssigned = Math.round(each * checked.length * 100) / 100
-    const remainder = Math.round((numericAmount - totalAssigned) * 100) / 100
+    const factor = Math.pow(10, currDecimals)
+    const each = Math.floor((numericAmount / checked.length) * factor) / factor
+    const totalAssigned = Math.round(each * checked.length * factor) / factor
+    const remainder = Math.round((numericAmount - totalAssigned) * factor) / factor
     const remainderTarget = checked.find(s => s.member_name === payer)?.member_name ?? checked[0].member_name
     setSplits(prev =>
       prev.map(s => ({
@@ -119,7 +122,7 @@ export default function EditExpensePage() {
       }))
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, splitMethod, payer, splits.map(s => s.checked).join(',')])
+  }, [amount, splitMethod, payer, currDecimals, splits.map(s => s.checked).join(',')])
 
   // Recalculate ratio split
   useEffect(() => {
@@ -128,9 +131,10 @@ export default function EditExpensePage() {
     const checked = splits.filter(s => s.checked)
     const totalRatio = checked.reduce((sum, s) => sum + s.ratio, 0)
     if (totalRatio === 0) return
-    const amounts = checked.map(s => Math.floor((numericAmount * s.ratio / totalRatio) * 100) / 100)
-    const totalAssigned = Math.round(amounts.reduce((a, b) => a + b, 0) * 100) / 100
-    const remainder = Math.round((numericAmount - totalAssigned) * 100) / 100
+    const factor = Math.pow(10, currDecimals)
+    const amounts = checked.map(s => Math.floor((numericAmount * s.ratio / totalRatio) * factor) / factor)
+    const totalAssigned = Math.round(amounts.reduce((a, b) => a + b, 0) * factor) / factor
+    const remainder = Math.round((numericAmount - totalAssigned) * factor) / factor
     const remainderTarget = checked.find(s => s.member_name === payer)?.member_name ?? checked[0].member_name
     let checkedIdx = 0
     setSplits(prev =>
@@ -141,7 +145,7 @@ export default function EditExpensePage() {
       })
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, splitMethod, payer, splits.map(s => `${s.ratio}:${s.checked}`).join(',')])
+  }, [amount, splitMethod, payer, currDecimals, splits.map(s => `${s.ratio}:${s.checked}`).join(',')])
 
   async function handleAddMemberInline() {
     if (!inlineMemberName.trim()) return
@@ -206,7 +210,7 @@ export default function EditExpensePage() {
     if (visibility === 'shared' && splitMethod !== 'equal') {
       const splitTotal = activeSplits.reduce((sum, s) => sum + s.amount, 0)
       if (Math.abs(splitTotal - numericAmount) > 0.01) {
-        setError(`分攤金額合計 ${splitTotal.toFixed(2)} 與總金額 ${numericAmount.toFixed(2)} 不符`)
+        setError(`分攤金額合計 ${splitTotal.toFixed(currDecimals)} 與總金額 ${numericAmount.toFixed(currDecimals)} 不符`)
         return
       }
     }
@@ -459,7 +463,7 @@ export default function EditExpensePage() {
 
                     {splitMethod === 'equal' && split.checked && (
                       <span className="text-sm text-zinc-500 min-w-[5rem] text-right">
-                        {currency} {split.amount.toFixed(2)}
+                        {currency} {split.amount.toFixed(currDecimals)}
                       </span>
                     )}
 
@@ -491,7 +495,7 @@ export default function EditExpensePage() {
                           className="w-16 text-right"
                         />
                         <span className="text-xs text-zinc-400 min-w-[5rem]">
-                          ≈ {currency} {split.amount.toFixed(2)}
+                          ≈ {currency} {split.amount.toFixed(currDecimals)}
                         </span>
                       </div>
                     )}

@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '檔案超過 1 MB 上限' }, { status: 400 })
     }
 
-    const path = `${notebookId}/${Date.now()}_${file.name}`
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `${notebookId}/${Date.now()}.${ext}`
 
     const supabase = createClient()
     const { data, error } = await supabase.storage
