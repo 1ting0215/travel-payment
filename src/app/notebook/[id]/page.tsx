@@ -561,7 +561,7 @@ export default function NotebookPage() {
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
         {activeTab === 'expenses' && (
-          <ExpenseList expenses={expenses} identity={identity} />
+          <ExpenseList expenses={expenses} identity={identity} notebookId={id} />
         )}
         {activeTab === 'collection' && (
           <CollectionTab notebookId={id} members={members} identity={identity} />
@@ -581,7 +581,7 @@ export default function NotebookPage() {
   )
 }
 
-function ExpenseList({ expenses, identity }: { expenses: Expense[]; identity: string | null }) {
+function ExpenseList({ expenses, identity, notebookId }: { expenses: Expense[]; identity: string | null; notebookId: string }) {
   if (expenses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -607,7 +607,7 @@ function ExpenseList({ expenses, identity }: { expenses: Expense[]; identity: st
   return (
     <div className="flex flex-col gap-3">
       {expenses.map(expense => (
-        <ExpenseCard key={expense.id} expense={expense} identity={identity} notebookId={id} />
+        <ExpenseCard key={expense.id} expense={expense} identity={identity} notebookId={notebookId} />
       ))}
     </div>
   )
