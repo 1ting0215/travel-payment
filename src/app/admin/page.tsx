@@ -45,6 +45,7 @@ function formatDate(iso: string | null): string {
 
 export default function AdminPage() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [authed, setAuthed] = useState(false)
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
@@ -94,7 +95,7 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), password }),
       })
 
       if (!res.ok) {
@@ -160,11 +161,25 @@ export default function AdminPage() {
                   />
                 </div>
 
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-zinc-700" htmlFor="admin-password">
+                    密碼
+                  </label>
+                  <Input
+                    id="admin-password"
+                    type="password"
+                    placeholder="請輸入密碼"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
                 {authError && (
                   <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{authError}</p>
                 )}
 
-                <Button type="submit" className="w-full" disabled={authLoading || !email.trim()}>
+                <Button type="submit" className="w-full" disabled={authLoading || !email.trim() || !password}>
                   {authLoading ? '驗證中…' : '進入管理'}
                 </Button>
               </form>
@@ -240,6 +255,7 @@ export default function AdminPage() {
                       <th className="text-right px-4 py-3 font-medium text-zinc-500">成員</th>
                       <th className="text-right px-4 py-3 font-medium text-zinc-500">費用筆數</th>
                       <th className="text-right px-4 py-3 font-medium text-zinc-500">檔案容量</th>
+                      <th className="px-4 py-3 font-medium text-zinc-500">連結</th>
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
@@ -263,6 +279,13 @@ export default function AdminPage() {
                         <td className="px-4 py-3 text-right text-zinc-600">{nb.expense_count}</td>
                         <td className="px-4 py-3 text-right text-zinc-600">
                           {formatBytes(nb.storage_size)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <a href={`/notebook/${nb.id}`} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="sm" className="text-indigo-600">
+                              開啟
+                            </Button>
+                          </a>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button
@@ -301,14 +324,21 @@ export default function AdminPage() {
                         {formatBytes(nb.storage_size)}
                       </p>
                     </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => setDeleteTarget(nb)}
-                    >
-                      刪除
-                    </Button>
+                    <div className="flex gap-2">
+                      <a href={`/notebook/${nb.id}`} target="_blank" rel="noopener noreferrer" className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full text-indigo-600">
+                          開啟記帳本
+                        </Button>
+                      </a>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setDeleteTarget(nb)}
+                      >
+                        刪除
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}

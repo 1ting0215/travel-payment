@@ -2,19 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+    const { email, password } = await request.json()
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email 及密碼為必填' }, { status: 400 })
     }
 
     const adminEmail = process.env.ADMIN_EMAIL
-    if (!adminEmail) {
+    const adminPassword = process.env.ADMIN_PASSWORD
+    if (!adminEmail || !adminPassword) {
       return NextResponse.json({ error: 'Admin not configured' }, { status: 500 })
     }
 
-    if (email.trim().toLowerCase() !== adminEmail.trim().toLowerCase()) {
-      return NextResponse.json({ error: '無權限存取' }, { status: 401 })
+    if (
+      email.trim().toLowerCase() !== adminEmail.trim().toLowerCase() ||
+      password !== adminPassword
+    ) {
+      return NextResponse.json({ error: 'Email 或密碼錯誤' }, { status: 401 })
     }
 
     return NextResponse.json({ ok: true })
