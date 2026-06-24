@@ -479,6 +479,13 @@ export default function NotebookPage() {
             >
               {closeLoading ? '處理中…' : notebook.is_closed ? '重新開啟記帳本' : '關閉記帳本'}
             </Button>
+            <div className="border-t border-zinc-100 pt-3 mt-1">
+              <a href="https://travel-payment-zeta.vercel.app/" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="w-full">
+                  另新增記帳本
+                </Button>
+              </a>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -503,11 +510,6 @@ export default function NotebookPage() {
             >
               管理
             </Button>
-            <a href="https://travel-payment-zeta.vercel.app/" target="_blank" rel="noopener noreferrer">
-              <Button variant="ghost" size="sm" className="text-xs">
-                另新增記帳本
-              </Button>
-            </a>
             <Button
               variant="ghost"
               size="sm"
