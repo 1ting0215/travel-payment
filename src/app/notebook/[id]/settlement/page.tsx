@@ -65,7 +65,7 @@ export default function SettlementPage() {
 
   function findExchangeRate(currencyCode: string): { rate: number; base: string } | null {
     const c = currencies.find(c => c.code === currencyCode)
-    if (c?.exchange_rate && c.base_currency) {
+    if (c?.exchange_rate && c.base_currency && c.base_currency !== 'true' && c.base_currency !== 'false') {
       return { rate: c.exchange_rate, base: c.base_currency }
     }
     return null
