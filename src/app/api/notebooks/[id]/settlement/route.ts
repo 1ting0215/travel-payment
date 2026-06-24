@@ -40,6 +40,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const supabase = createClient()
 
+    // Delete existing settlement items before re-saving
+    await supabase.from('tp_settlement_items').delete().eq('notebook_id', id)
+
     const rows = transfers.map((t: { from_member: string; to_member: string; amount: number; currency: string }) => ({
       notebook_id: id,
       from_member: t.from_member,
