@@ -400,7 +400,7 @@ export default function EditExpensePage() {
                     : 'bg-white text-zinc-600 hover:bg-zinc-50'
                 }`}
               >
-                個人費用
+                個人費用（開發中）
               </button>
             </div>
           </CardContent>
@@ -425,7 +425,7 @@ export default function EditExpensePage() {
                           : 'bg-white text-zinc-600 border-zinc-200 hover:border-indigo-300'
                       }`}
                     >
-                      {m === 'equal' ? '均分' : m === 'custom' ? '自訂金額' : '按比例'}
+                      {m === 'equal' ? '均分' : m === 'custom' ? '自訂金額' : '按比例（開發中）'}
                     </button>
                   ))}
                 </div>
