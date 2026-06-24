@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     const ext = file.name.split('.').pop() ?? 'jpg'
-    const safeName = encodeURIComponent(memberName)
+    const buf = Buffer.from(memberName, 'utf-8')
+    const safeName = buf.toString('hex')
     const path = `${notebookId}/${safeName}_${Date.now()}.${ext}`
 
     const supabase = createClient()
