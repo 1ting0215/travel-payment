@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -54,6 +61,8 @@ export default function EditExpensePage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const currDecimals = currencies.find(c => c.code === currency)?.decimal_places ?? 2
 
@@ -543,7 +552,53 @@ export default function EditExpensePage() {
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? '更新中…' : '更新費用'}
         </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full text-red-500 hover:text-red-700 hover:bg-red-50"
+          onClick={() => setDeleteOpen(true)}
+        >
+          刪除此筆費用
+        </Button>
       </form>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="mx-4">
+          <DialogHeader>
+            <DialogTitle>確認刪除</DialogTitle>
+            <DialogDescription>確認要刪除此筆資料？此操作無法復原。</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 mt-4">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleteLoading}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              disabled={deleteLoading}
+              onClick={async () => {
+                setDeleteLoading(true)
+                try {
+                  const res = await fetch(`/api/expenses/${expenseId}`, { method: 'DELETE' })
+                  if (res.ok) {
+                    router.push(`/notebook/${id}`)
+                  }
+                } finally {
+                  setDeleteLoading(false)
+                }
+              }}
+            >
+              {deleteLoading ? '刪除中…' : '確認刪除'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
