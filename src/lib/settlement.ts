@@ -30,50 +30,58 @@ export function calculateBalances(expenses: (Expense & { splits: ExpenseSplit[] 
   return Array.from(balanceMap.values())
 }
 
-export function generateTransferList(balances: Balance[]): SettlementItem[] {
-  const currencies = [...new Set(balances.map(b => b.currency))]
-  const transfers: SettlementItem[] = []
+export function generateTransferList(
+  balances: Balance[],
+  expenses?: (Expense & { splits: ExpenseSplit[] })[]
+): SettlementItem[] {
+  if (!expenses || expenses.length === 0) {
+    return []
+  }
 
-  for (const currency of currencies) {
-    const currencyBalances = balances.filter(b => b.currency === currency)
+  // Pairwise: each splitter owes the payer directly, then net bidirectional debts
+  // key: "from::to::currency"
+  const debtMap = new Map<string, number>()
 
-    const creditors = currencyBalances.filter(b => b.net > 0).map(b => ({ ...b }))
-    const debtors = currencyBalances.filter(b => b.net < 0).map(b => ({ ...b }))
-
-    creditors.sort((a, b) => b.net - a.net)
-    debtors.sort((a, b) => a.net - b.net)
-
-    let ci = 0
-    let di = 0
-
-    while (ci < creditors.length && di < debtors.length) {
-      const creditor = creditors[ci]
-      const debtor = debtors[di]
-
-      const amount = Math.min(creditor.net, -debtor.net)
-      const roundedAmount = Math.round(amount * 100) / 100
-
-      if (roundedAmount > 0.01) {
-        transfers.push({
-          id: crypto.randomUUID(),
-          notebook_id: '',
-          from_member: debtor.member,
-          to_member: creditor.member,
-          amount: roundedAmount,
-          currency,
-          status: 'unpaid',
-          proof_url: null,
-          original_amounts: null,
-        })
-      }
-
-      creditor.net -= amount
-      debtor.net += amount
-
-      if (Math.abs(creditor.net) < 0.01) ci++
-      if (Math.abs(debtor.net) < 0.01) di++
+  for (const expense of expenses) {
+    if (expense.visibility !== 'shared') continue
+    for (const split of expense.splits) {
+      if (split.member_name === expense.payer) continue
+      const key = `${split.member_name}::${expense.payer}::${expense.currency}`
+      debtMap.set(key, (debtMap.get(key) ?? 0) + split.amount)
     }
   }
+
+  // Net bidirectional debts for each pair
+  const transfers: SettlementItem[] = []
+  const processed = new Set<string>()
+
+  for (const [key, amount] of debtMap.entries()) {
+    if (processed.has(key)) continue
+    const [from, to, currency] = key.split('::')
+    const reverseKey = `${to}::${from}::${currency}`
+    processed.add(key)
+    processed.add(reverseKey)
+
+    const reverseAmount = debtMap.get(reverseKey) ?? 0
+    const net = Math.round((amount - reverseAmount) * 100) / 100
+
+    if (Math.abs(net) < 0.01) continue
+
+    transfers.push({
+      id: crypto.randomUUID(),
+      notebook_id: '',
+      from_member: net > 0 ? from : to,
+      to_member: net > 0 ? to : from,
+      amount: Math.abs(net),
+      currency,
+      status: 'unpaid',
+      proof_url: null,
+      original_amounts: null,
+    })
+  }
+
+  // Sort: by currency, then by amount descending
+  transfers.sort((a, b) => a.currency.localeCompare(b.currency) || b.amount - a.amount)
 
   return transfers
 }

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const expenses = (data ?? []) as (Expense & { splits: ExpenseSplit[] })[]
     const balances = calculateBalances(expenses)
-    const transfers = generateTransferList(balances)
+    const transfers = generateTransferList(balances, expenses)
 
     return NextResponse.json({ balances, transfers })
   } catch (err) {
