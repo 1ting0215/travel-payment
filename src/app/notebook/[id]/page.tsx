@@ -457,34 +457,34 @@ export default function NotebookPage() {
         <DialogContent className="mx-4">
           <DialogHeader>
             <DialogTitle>管理記帳本</DialogTitle>
-            <DialogDescription>請輸入建立記帳本的 Email 以驗證身份</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-zinc-700">Creator Email</label>
-              <Input
-                type="email"
-                placeholder="建立者 Email"
-                value={closeEmail}
-                onChange={e => { setCloseEmail(e.target.value); setCloseError('') }}
-              />
-            </div>
-            {closeError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{closeError}</p>
-            )}
-            <Button
-              onClick={handleCloseNotebook}
-              disabled={closeLoading || !closeEmail.trim()}
-              variant={notebook.is_closed ? 'default' : 'destructive'}
-            >
-              {closeLoading ? '處理中…' : notebook.is_closed ? '重新開啟記帳本' : '關閉記帳本'}
-            </Button>
+            <a href="https://travel-payment-zeta.vercel.app/" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="w-full">
+                另新增記帳本
+              </Button>
+            </a>
             <div className="border-t border-zinc-100 pt-3 mt-1">
-              <a href="https://travel-payment-zeta.vercel.app/" target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" className="w-full">
-                  另新增記帳本
+              <p className="text-sm font-medium text-zinc-700 mb-2">關閉記帳本</p>
+              <p className="text-xs text-zinc-500 mb-3">請輸入建立記帳本的 Email 以驗證身份</p>
+              <div className="flex flex-col gap-3">
+                <Input
+                  type="email"
+                  placeholder="建立者 Email"
+                  value={closeEmail}
+                  onChange={e => { setCloseEmail(e.target.value); setCloseError('') }}
+                />
+                {closeError && (
+                  <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{closeError}</p>
+                )}
+                <Button
+                  onClick={handleCloseNotebook}
+                  disabled={closeLoading || !closeEmail.trim()}
+                  variant={notebook.is_closed ? 'default' : 'destructive'}
+                >
+                  {closeLoading ? '處理中…' : notebook.is_closed ? '重新開啟記帳本' : '關閉記帳本'}
                 </Button>
-              </a>
+              </div>
             </div>
           </div>
         </DialogContent>
