@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -49,7 +50,12 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center px-4 py-16">
+    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center px-4 py-16 relative">
+      <Link href="/admin" className="absolute top-4 right-4">
+        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-600">
+          設計者管理
+        </Button>
+      </Link>
       <div className="w-full max-w-md">
         {/* Logo / Header */}
         <div className="text-center mb-10">

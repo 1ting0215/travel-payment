@@ -503,6 +503,11 @@ export default function NotebookPage() {
             >
               管理
             </Button>
+            <a href="https://travel-payment-zeta.vercel.app/" target="_blank" rel="noopener noreferrer">
+              <Button variant="ghost" size="sm" className="text-xs">
+                另新增記帳本
+              </Button>
+            </a>
             <Button
               variant="ghost"
               size="sm"
