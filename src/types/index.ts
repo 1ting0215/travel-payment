@@ -61,7 +61,12 @@ export interface SettlementItem {
   currency: string
   status: RemittanceStatus
   proof_url: string | null
-  original_amounts?: { from: number; to: number } | null
+  original_amounts?: {
+    from?: number
+    to?: number
+    status_updated_by?: string
+    status_updated_at?: string
+  } | null
 }
 
 export interface CollectionInfo {

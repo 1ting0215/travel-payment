@@ -100,7 +100,7 @@ export default function RemittancePage() {
       const res = await fetch(`/api/settlement/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({ status: nextStatus, updated_by: identity }),
       })
       if (res.ok) {
         const updated: SettlementItem = await res.json()
@@ -133,7 +133,7 @@ export default function RemittancePage() {
       const res = await fetch(`/api/settlement/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paid', proof_url: url }),
+        body: JSON.stringify({ status: 'paid', proof_url: url, updated_by: identity }),
       })
       if (res.ok) {
         const updated: SettlementItem = await res.json()
@@ -377,14 +377,27 @@ function TransferCard({
 
         {/* Actions */}
         <div className="flex gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onStatusUpdate(item)}
-            disabled={isUpdating || disabled}
-          >
-            {isUpdating ? '更新中…' : `標記為 ${STATUS_LABELS[STATUS_NEXT[item.status]]}`}
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onStatusUpdate(item)}
+              disabled={isUpdating || disabled}
+            >
+              {isUpdating ? '更新中…' : `標記為 ${STATUS_LABELS[STATUS_NEXT[item.status]]}`}
+            </Button>
+            {item.original_amounts?.status_updated_by && (
+              <span className="text-xs text-zinc-400">
+                {item.original_amounts.status_updated_by} ・{' '}
+                {new Date(item.original_amounts.status_updated_at!).toLocaleString('zh-TW', {
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            )}
+          </div>
 
           {item.status === 'unpaid' && showCollection && !disabled && (
             <div className="flex flex-col gap-1">
