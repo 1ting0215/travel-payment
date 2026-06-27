@@ -2,6 +2,8 @@
   "name": "travel-payment",
   "version": "0.1.0",
   "private": true,
+  "author": "1ting0215 <https://github.com/1ting0215>",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
