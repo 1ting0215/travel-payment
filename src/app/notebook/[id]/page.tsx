@@ -45,6 +45,16 @@ export default function NotebookPage() {
   const [newMemberName, setNewMemberName] = useState('')
   const [selectedMember, setSelectedMember] = useState('')
   const [identityLoading, setIdentityLoading] = useState(false)
+  const [identityStep, setIdentityStep] = useState<'choose' | 'password' | 'set_password'>('choose')
+  const [identityPending, setIdentityPending] = useState('')
+  const [passwordInput, setPasswordInput] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [setupPassword, setSetupPassword] = useState('')
+  const [passwordVerified, setPasswordVerified] = useState(false)
+  const [pwOld, setPwOld] = useState('')
+  const [pwNew, setPwNew] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState('')
   const [activeTab, setActiveTab] = useState<Tab>('expenses')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -99,8 +109,10 @@ export default function NotebookPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem(`notebook_identity_${id}`)
+    const pwVerified = sessionStorage.getItem(`notebook_pw_verified_${id}`)
     if (stored) {
       setIdentity(stored)
+      if (pwVerified === stored) setPasswordVerified(true)
       fetchData(stored)
     } else {
       setIdentityOpen(true)
@@ -108,30 +120,125 @@ export default function NotebookPage() {
     }
   }, [id, fetchData])
 
-  async function saveIdentity(name: string) {
-    if (!name.trim()) return
+  function resetIdentityDialog() {
+    setIdentityStep('choose')
+    setIdentityPending('')
+    setPasswordInput('')
+    setPasswordError('')
+    setSetupPassword('')
+    setSelectedMember('')
+    setNewMemberName('')
+  }
+
+  async function completeLogin(name: string, verified: boolean) {
+    sessionStorage.setItem(`notebook_identity_${id}`, name)
+    if (verified) {
+      sessionStorage.setItem(`notebook_pw_verified_${id}`, name)
+    } else {
+      sessionStorage.removeItem(`notebook_pw_verified_${id}`)
+    }
+    setIdentity(name)
+    setPasswordVerified(verified)
+    setIdentityOpen(false)
+    resetIdentityDialog()
+    const expRes = await fetch(`/api/notebooks/${id}/expenses?created_by=${encodeURIComponent(name)}`)
+    if (expRes.ok) setExpenses(await expRes.json())
+  }
+
+  function handleIdentityConfirm() {
+    const name = (selectedMember || newMemberName).trim()
+    if (!name) return
+    const existing = members.find(m => m.name === name)
+    if (!existing) {
+      handleNewMemberLogin(name)
+      return
+    }
+    setIdentityPending(name)
+    if (existing.has_password) {
+      setIdentityStep('password')
+      setPasswordInput('')
+      setPasswordError('')
+    } else {
+      setIdentityStep('set_password')
+      setSetupPassword('')
+    }
+  }
+
+  async function handleNewMemberLogin(name: string) {
     setIdentityLoading(true)
     try {
       await fetch(`/api/notebooks/${id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name }),
       })
-      sessionStorage.setItem(`notebook_identity_${id}`, name.trim())
-      setIdentity(name.trim())
-      setIdentityOpen(false)
-      const expRes = await fetch(
-        `/api/notebooks/${id}/expenses?created_by=${encodeURIComponent(name.trim())}`
-      )
-      if (expRes.ok) setExpenses(await expRes.json())
+      await completeLogin(name, false)
     } finally {
       setIdentityLoading(false)
     }
   }
 
-  function handleIdentityConfirm() {
-    const name = selectedMember || newMemberName
-    saveIdentity(name)
+  async function handlePasswordConfirm() {
+    if (!passwordInput.trim()) { setPasswordError('請輸入密碼'); return }
+    setIdentityLoading(true)
+    try {
+      const res = await fetch(`/api/notebooks/${id}/members`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', name: identityPending, password: passwordInput }),
+      })
+      const json = await res.json()
+      if (!json.valid) {
+        setPasswordError('密碼錯囉！請確認是否選對角色')
+        return
+      }
+      await completeLogin(identityPending, true)
+    } finally {
+      setIdentityLoading(false)
+    }
+  }
+
+  async function handleSetupPasswordConfirm(skip: boolean) {
+    setIdentityLoading(true)
+    try {
+      if (!skip && setupPassword.trim()) {
+        await fetch(`/api/notebooks/${id}/members`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_password', name: identityPending, new_password: setupPassword.trim() }),
+        })
+        await completeLogin(identityPending, true)
+      } else {
+        await completeLogin(identityPending, false)
+      }
+    } finally {
+      setIdentityLoading(false)
+    }
+  }
+
+  async function handlePasswordChange() {
+    if (!pwNew.trim()) { setPwError('請輸入新密碼'); return }
+    const myMember = members.find(m => m.name === identity)
+    if (myMember?.has_password && !pwOld.trim()) { setPwError('請輸入原密碼'); return }
+    setPwSaving(true)
+    setPwError('')
+    try {
+      const res = await fetch(`/api/notebooks/${id}/members`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set_password',
+          name: identity,
+          current_password: myMember?.has_password ? pwOld : undefined,
+          new_password: pwNew.trim(),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setPwError(json.error ?? '變更失敗'); return }
+      window.location.reload()
+    } finally {
+      setPwSaving(false)
+    }
   }
 
   async function handleAddMember() {
@@ -272,48 +379,104 @@ export default function NotebookPage() {
       {/* Identity modal */}
       <Dialog open={identityOpen} onOpenChange={() => {}}>
         <DialogContent className="mx-4">
-          <DialogHeader>
-            <DialogTitle>你是誰？</DialogTitle>
-            <DialogDescription>請選擇你的身份以開始使用記帳本</DialogDescription>
-          </DialogHeader>
+          {identityStep === 'choose' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>你是誰？</DialogTitle>
+                <DialogDescription>請選擇你的身份以開始使用記帳本</DialogDescription>
+              </DialogHeader>
 
-          {members.length > 0 && (
-            <div className="mb-4">
-              <p className="text-sm font-medium text-zinc-700 mb-2">現有成員</p>
-              <div className="flex flex-wrap gap-2">
-                {members.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => { setSelectedMember(m.name); setNewMemberName('') }}
-                    className={`rounded-lg px-3 py-1.5 text-sm border transition-colors ${
-                      selectedMember === m.name
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-zinc-700 border-zinc-200 hover:border-indigo-400'
-                    }`}
-                  >
-                    {m.name}
-                  </button>
-                ))}
+              {members.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-zinc-700 mb-2">現有成員</p>
+                  <div className="flex flex-wrap gap-2">
+                    {members.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => { setSelectedMember(m.name); setNewMemberName('') }}
+                        className={`rounded-lg px-3 py-1.5 text-sm border transition-colors ${
+                          selectedMember === m.name
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-zinc-700 border-zinc-200 hover:border-indigo-400'
+                        }`}
+                      >
+                        {m.name}{m.has_password ? ' 🔒' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-zinc-700">新成員名稱</label>
+                <Input
+                  placeholder="輸入你的名字"
+                  value={newMemberName}
+                  onChange={e => { setNewMemberName(e.target.value); setSelectedMember('') }}
+                />
               </div>
-            </div>
+
+              <Button
+                className="w-full mt-4"
+                onClick={handleIdentityConfirm}
+                disabled={identityLoading || (!selectedMember && !newMemberName.trim())}
+              >
+                {identityLoading ? '確認中…' : '確認'}
+              </Button>
+            </>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-zinc-700">新成員名稱</label>
-            <Input
-              placeholder="輸入你的名字"
-              value={newMemberName}
-              onChange={e => { setNewMemberName(e.target.value); setSelectedMember('') }}
-            />
-          </div>
+          {identityStep === 'password' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>輸入密碼</DialogTitle>
+                <DialogDescription>角色「{identityPending}」已設定密碼，請輸入才能登入</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-3 mt-2">
+                <Input
+                  type="password"
+                  placeholder="請輸入密碼"
+                  value={passwordInput}
+                  onChange={e => { setPasswordInput(e.target.value); setPasswordError('') }}
+                  onKeyDown={e => { if (e.key === 'Enter') handlePasswordConfirm() }}
+                  autoFocus
+                />
+                {passwordError && (
+                  <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{passwordError}</p>
+                )}
+                <Button className="w-full" onClick={handlePasswordConfirm} disabled={identityLoading}>
+                  {identityLoading ? '驗證中…' : '登入'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => { resetIdentityDialog() }}
+                  className="text-xs text-zinc-400 hover:text-zinc-600 text-center"
+                >
+                  ← 返回選擇角色
+                </button>
+              </div>
+            </>
+          )}
 
-          <Button
-            className="w-full mt-4"
-            onClick={handleIdentityConfirm}
-            disabled={identityLoading || (!selectedMember && !newMemberName.trim())}
-          >
-            {identityLoading ? '確認中…' : '確認'}
-          </Button>
+          {identityStep === 'set_password' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>設定密碼（選填）</DialogTitle>
+                <DialogDescription>角色「{identityPending}」尚未設定密碼，可選擇設定以保護此角色</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-3 mt-2">
+                <Input
+                  type="password"
+                  placeholder="輸入密碼（留空跳過）"
+                  value={setupPassword}
+                  onChange={e => setSetupPassword(e.target.value)}
+                />
+                <Button className="w-full" onClick={() => handleSetupPasswordConfirm(false)} disabled={identityLoading}>
+                  {identityLoading ? '處理中…' : setupPassword.trim() ? '設定並登入' : '跳過並登入'}
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -471,7 +634,7 @@ export default function NotebookPage() {
       </Dialog>
 
       {/* Close/Reopen dialog */}
-      <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
+      <Dialog open={closeOpen} onOpenChange={open => { setCloseOpen(open); if (!open) { setPwOld(''); setPwNew(''); setPwError('') } }}>
         <DialogContent className="mx-4">
           <DialogHeader>
             <DialogTitle>管理記帳本</DialogTitle>
@@ -482,6 +645,36 @@ export default function NotebookPage() {
                 另新增記帳本
               </Button>
             </a>
+
+            {/* 角色密碼變更 — 僅限通過密碼驗證的登入者 */}
+            {identity && passwordVerified && (
+              <div className="border-t border-zinc-100 pt-3 mt-1">
+                <p className="text-sm font-medium text-zinc-700 mb-2">角色密碼變更</p>
+                <div className="flex flex-col gap-2">
+                  {members.find(m => m.name === identity)?.has_password && (
+                    <Input
+                      type="password"
+                      placeholder="原密碼"
+                      value={pwOld}
+                      onChange={e => { setPwOld(e.target.value); setPwError('') }}
+                    />
+                  )}
+                  <Input
+                    type="password"
+                    placeholder="新密碼"
+                    value={pwNew}
+                    onChange={e => { setPwNew(e.target.value); setPwError('') }}
+                  />
+                  {pwError && (
+                    <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{pwError}</p>
+                  )}
+                  <Button onClick={handlePasswordChange} disabled={pwSaving || !pwNew.trim()}>
+                    {pwSaving ? '儲存中…' : '儲存密碼'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-zinc-100 pt-3 mt-1">
               <p className="text-sm font-medium text-zinc-700 mb-2">關閉記帳本</p>
               <p className="text-xs text-zinc-500 mb-3">請輸入建立記帳本的 Email 以驗證身份</p>
@@ -561,7 +754,10 @@ export default function NotebookPage() {
                   <button
                     onClick={() => {
                       sessionStorage.removeItem(`notebook_identity_${id}`)
+                      sessionStorage.removeItem(`notebook_pw_verified_${id}`)
                       setIdentity(null)
+                      setPasswordVerified(false)
+                      resetIdentityDialog()
                       setIdentityOpen(true)
                     }}
                     className="text-xs text-zinc-400 hover:text-zinc-600 underline ml-1"

@@ -16,6 +16,7 @@ export interface Member {
   notebook_id: string
   name: string
   created_at: string
+  has_password?: boolean
 }
 
 export interface Currency {

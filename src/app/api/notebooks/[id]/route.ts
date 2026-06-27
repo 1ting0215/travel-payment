@@ -19,9 +19,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Update last_accessed_at (fire-and-forget, don't block response)
     supabase.from('tp_notebooks').update({ last_accessed_at: new Date().toISOString() }).eq('id', id).then(() => {})
 
+    const members = (membersRes.data ?? []).map((m: Record<string, unknown>) => {
+      const { password, ...rest } = m
+      return { ...rest, has_password: !!password }
+    })
+
     return NextResponse.json({
       notebook: notebookRes.data,
-      members: membersRes.data ?? [],
+      members,
       currencies: currenciesRes.data ?? [],
     })
   } catch (err) {
