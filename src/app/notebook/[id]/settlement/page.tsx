@@ -123,9 +123,14 @@ export default function SettlementPage() {
       if (!items?.length) continue
       if (lines.length > 0) lines.push('')
       lines.push(`【${curr}】`)
+      const exchInfo = curr !== 'TWD' ? findExchangeRate(curr) : null
+      const twdDp = getDecimals('TWD')
       for (const item of items) {
         const dp = decimalMap[item.currency] ?? 2
-        lines.push(`${item.from_member} -> ${item.to_member}: ${item.amount.toFixed(dp)} ${item.currency}`)
+        const twdSuffix = exchInfo?.base === 'TWD'
+          ? `（TWD＝${(item.amount * exchInfo.rate).toFixed(twdDp)}）`
+          : ''
+        lines.push(`${item.from_member} -> ${item.to_member}: ${item.amount.toFixed(dp)} ${item.currency}${twdSuffix}`)
       }
     }
 
