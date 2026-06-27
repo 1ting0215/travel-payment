@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import type { Balance, SettlementItem, Currency, Expense } from '@/types'
 import { formatTransferText } from '@/lib/settlement'
+import { formatNum } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,7 @@ export default function SettlementPage() {
   const [error, setError] = useState('')
   const [identity, setIdentity] = useState<string | null>(null)
   const [privateExpenses, setPrivateExpenses] = useState<Expense[]>([])
+  const [sharedExpenses, setSharedExpenses] = useState<Expense[]>([])
 
   const fetchData = useCallback(async () => {
     try {
@@ -68,6 +70,13 @@ export default function SettlementPage() {
   useEffect(() => {
     const stored = sessionStorage.getItem(`notebook_identity_${id}`)
     if (stored) setIdentity(stored)
+  }, [id])
+
+  useEffect(() => {
+    fetch(`/api/notebooks/${id}/expenses`)
+      .then(r => r.json())
+      .then((exps: Expense[]) => setSharedExpenses(exps))
+      .catch(() => {})
   }, [id])
 
   useEffect(() => {
@@ -211,10 +220,10 @@ export default function SettlementPage() {
       if (privateExpenses.length > 0) {
         summaryData.push([])
         summaryData.push(['【個人費用明細】'])
-        summaryData.push(['日期', '費用名稱', '分類', '幣別', '金額'])
+        summaryData.push(['日期', '費用名稱', '分類', '幣別', '金額', '備註'])
         for (const e of privateExpenses) {
           const dp = getDecimals(e.currency)
-          summaryData.push([e.date, e.title, e.category || '無', e.currency, Number(e.amount.toFixed(dp))])
+          summaryData.push([e.date, e.title, e.category || '無', e.currency, Number(e.amount.toFixed(dp)), e.notes ?? ''])
         }
       }
 
@@ -228,6 +237,27 @@ export default function SettlementPage() {
       }, [])
       ws['!cols'] = colWidths.map(w => ({ wch: Math.min(w, 20) }))
       XLSX.utils.book_append_sheet(wb, ws, '我的摘要')
+    }
+
+    // 共同分攤明細 sheet
+    if (sharedExpenses.length > 0) {
+      const sharedData: (string | number)[][] = []
+      sharedData.push(['【共同分攤費用明細】'])
+      sharedData.push(['日期', '費用名稱', '分類', '幣別', '金額', '付款人', '備註'])
+      for (const e of sharedExpenses) {
+        const dp = getDecimals(e.currency)
+        sharedData.push([e.date, e.title, e.category || '無', e.currency, Number(e.amount.toFixed(dp)), e.payer, e.notes ?? ''])
+      }
+      const wsShared = XLSX.utils.aoa_to_sheet(sharedData)
+      const sharedColWidths = sharedData.reduce<number[]>((widths, row) => {
+        row.forEach((cell, i) => {
+          const len = String(cell).length + 2
+          widths[i] = Math.max(widths[i] ?? 8, len)
+        })
+        return widths
+      }, [])
+      wsShared['!cols'] = sharedColWidths.map(w => ({ wch: Math.min(w, 25) }))
+      XLSX.utils.book_append_sheet(wb, wsShared, '共同分攤明細')
     }
 
     XLSX.writeFile(wb, '結算明細.xlsx')
@@ -376,28 +406,28 @@ export default function SettlementPage() {
                             <tr key={b.member} className="border-b border-zinc-50 last:border-0">
                               <td className="py-2.5 font-medium text-zinc-800">{b.member}</td>
                               <td className="py-2.5 text-right text-zinc-600">
-                                {b.paid.toFixed(dp)}
+                                {formatNum(b.paid, dp)}
                                 {exchInfo && (
                                   <div className="text-xs text-zinc-400">
-                                    ≈ {(b.paid * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
+                                    ≈ {formatNum(b.paid * exchInfo.rate, baseDp)} {exchInfo.base}
                                   </div>
                                 )}
                               </td>
                               <td className="py-2.5 text-right text-zinc-600">
-                                {b.owed.toFixed(dp)}
+                                {formatNum(b.owed, dp)}
                                 {exchInfo && (
                                   <div className="text-xs text-zinc-400">
-                                    ≈ {(b.owed * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
+                                    ≈ {formatNum(b.owed * exchInfo.rate, baseDp)} {exchInfo.base}
                                   </div>
                                 )}
                               </td>
                               <td className="py-2.5 text-right">
                                 <span className={b.net >= 0 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
-                                  {b.net >= 0 ? '+' : ''}{b.net.toFixed(dp)}
+                                  {b.net >= 0 ? '+' : ''}{formatNum(b.net, dp)}
                                 </span>
                                 {exchInfo && (
                                   <div className="text-xs text-zinc-400">
-                                    ≈ {(b.net * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
+                                    ≈ {formatNum(b.net * exchInfo.rate, baseDp)} {exchInfo.base}
                                   </div>
                                 )}
                               </td>
@@ -431,11 +461,11 @@ export default function SettlementPage() {
                           </div>
                           <div className="text-right">
                             <span className="text-sm font-semibold text-zinc-900">
-                              {curr} {t.amount.toFixed(dp)}
+                              {curr} {formatNum(t.amount, dp)}
                             </span>
                             {exchInfo && (
                               <div className="text-xs text-zinc-400">
-                                ≈ {(t.amount * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
+                                ≈ {formatNum(t.amount * exchInfo.rate, baseDp)} {exchInfo.base}
                               </div>
                             )}
                           </div>
@@ -483,9 +513,9 @@ export default function SettlementPage() {
                               <tr key={cat} className="border-b border-zinc-50">
                                 <td className="py-1.5 text-zinc-500 pl-2">個人費用 · {cat}</td>
                                 <td className="py-1.5 text-right text-zinc-700">
-                                  {amt.toFixed(dp)}
+                                  {formatNum(amt, dp)}
                                   {exchInfo && (
-                                    <span className="text-xs text-zinc-400 ml-1">≈{(amt * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                                    <span className="text-xs text-zinc-400 ml-1">≈{formatNum(amt * exchInfo.rate, baseDp)} {exchInfo.base}</span>
                                   )}
                                 </td>
                               </tr>
@@ -495,9 +525,9 @@ export default function SettlementPage() {
                             <tr className="border-b border-zinc-100">
                               <td className="py-1.5 text-zinc-500 pl-2 font-medium">個人小計</td>
                               <td className="py-1.5 text-right font-medium text-zinc-700">
-                                {privTotal.toFixed(dp)}
+                                {formatNum(privTotal, dp)}
                                 {exchInfo && (
-                                  <span className="text-xs text-zinc-400 ml-1">≈{(privTotal * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                                  <span className="text-xs text-zinc-400 ml-1">≈{formatNum(privTotal * exchInfo.rate, baseDp)} {exchInfo.base}</span>
                                 )}
                               </td>
                             </tr>
@@ -506,9 +536,9 @@ export default function SettlementPage() {
                             <tr className="border-b border-zinc-50">
                               <td className="py-1.5 text-zinc-500 pl-2">共同分攤（應付）</td>
                               <td className="py-1.5 text-right text-zinc-700">
-                                {owed.toFixed(dp)}
+                                {formatNum(owed, dp)}
                                 {exchInfo && (
-                                  <span className="text-xs text-zinc-400 ml-1">≈{(owed * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                                  <span className="text-xs text-zinc-400 ml-1">≈{formatNum(owed * exchInfo.rate, baseDp)} {exchInfo.base}</span>
                                 )}
                               </td>
                             </tr>
@@ -516,9 +546,9 @@ export default function SettlementPage() {
                           <tr>
                             <td className="pt-2 font-semibold text-zinc-900 pl-2">合計</td>
                             <td className="pt-2 text-right font-semibold text-zinc-900">
-                              {total.toFixed(dp)}
+                              {formatNum(total, dp)}
                               {exchInfo && (
-                                <span className="text-xs text-zinc-400 ml-1">≈{(total * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                                <span className="text-xs text-zinc-400 ml-1">≈{formatNum(total * exchInfo.rate, baseDp)} {exchInfo.base}</span>
                               )}
                             </td>
                           </tr>
