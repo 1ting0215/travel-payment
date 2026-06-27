@@ -403,7 +403,7 @@ function TransferCard({
               variant="outline"
               size="sm"
               onClick={() => onStatusUpdate(item)}
-              disabled={isUpdating || disabled || (item.status === 'confirmed' && !!item.original_amounts?.unconfirmed_by)}
+              disabled={isUpdating || disabled || (item.status === 'confirmed' && !!item.original_amounts?.reconfirmed_by)}
             >
               {isUpdating ? '更新中…' : STATUS_BUTTON[item.status]}
             </Button>
@@ -416,14 +416,20 @@ function TransferCard({
               )}
               {item.original_amounts?.confirmed_by && (
                 <span className="text-xs text-zinc-400">
-                  確認：{item.original_amounts.confirmed_by} ・{' '}
+                  {item.original_amounts.unconfirmed_by ? '原確認' : '確認'}：{item.original_amounts.confirmed_by} ・{' '}
                   {new Date(item.original_amounts.confirmed_at!).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
               {item.original_amounts?.unconfirmed_by && (
                 <span className="text-xs text-zinc-400">
-                  收款者取消確認：{item.original_amounts.unconfirmed_by} ・{' '}
+                  取消確認：{item.original_amounts.unconfirmed_by} ・{' '}
                   {new Date(item.original_amounts.unconfirmed_at!).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {item.original_amounts?.reconfirmed_by && (
+                <span className="text-xs text-zinc-400">
+                  確認：{item.original_amounts.reconfirmed_by} ・{' '}
+                  {new Date(item.original_amounts.reconfirmed_at!).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
               {!item.original_amounts?.paid_by && item.original_amounts?.status_updated_by && (

@@ -23,9 +23,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const prevAmounts = (existing?.original_amounts as Record<string, unknown>) ?? {}
     const isUnconfirm = existing?.status === 'confirmed' && status === 'paid'
+    const isReconfirm = status === 'confirmed' && !!(prevAmounts.unconfirmed_by)
 
     const now = new Date().toISOString()
-    const statusKey = isUnconfirm ? 'unconfirmed' : status === 'paid' ? 'paid' : status === 'confirmed' ? 'confirmed' : null
+    const statusKey = isUnconfirm ? 'unconfirmed' : isReconfirm ? 'reconfirmed' : status === 'paid' ? 'paid' : status === 'confirmed' ? 'confirmed' : null
     const updates: { status: RemittanceStatus; proof_url?: string | null; original_amounts: Record<string, unknown> } = {
       status: status as RemittanceStatus,
       original_amounts: {

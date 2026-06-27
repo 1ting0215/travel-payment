@@ -74,6 +74,8 @@ export interface SettlementItem {
     confirmed_at?: string
     unconfirmed_by?: string
     unconfirmed_at?: string
+    reconfirmed_by?: string
+    reconfirmed_at?: string
     settlement_saved_by?: string
     settlement_saved_at?: string
   } | null
