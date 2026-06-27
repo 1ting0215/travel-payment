@@ -240,6 +240,11 @@ export default function NotebookPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'set_password', name: identityPending, new_password: setupPassword.trim() }),
         })
+        // Update local members state so has_password reflects reality
+        setData(prev => prev ? {
+          ...prev,
+          members: prev.members.map(m => m.name === identityPending ? { ...m, has_password: true } : m),
+        } : prev)
         await completeLogin(identityPending, true)
       } else {
         await completeLogin(identityPending, false)
