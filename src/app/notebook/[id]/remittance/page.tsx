@@ -17,8 +17,14 @@ function Spinner() {
 
 const STATUS_LABELS: Record<RemittanceStatus, string> = {
   unpaid: '未付款',
-  paid: '已付款',
-  confirmed: '已確認',
+  paid: '付款者已付款',
+  confirmed: '收款者已確認',
+}
+
+const STATUS_BUTTON: Record<RemittanceStatus, string> = {
+  unpaid: '付款者標記 已付款',
+  paid: '收款者已確認入帳',
+  confirmed: '收款者已確認',
 }
 
 const STATUS_NEXT: Record<RemittanceStatus, RemittanceStatus> = {
@@ -399,7 +405,7 @@ function TransferCard({
               onClick={() => onStatusUpdate(item)}
               disabled={isUpdating || disabled || item.status === 'confirmed'}
             >
-              {isUpdating ? '更新中…' : item.status === 'confirmed' ? '已確認' : `標記為 ${STATUS_LABELS[STATUS_NEXT[item.status]]}`}
+              {isUpdating ? '更新中…' : STATUS_BUTTON[item.status]}
             </Button>
             <div className="flex flex-col gap-0.5">
               {item.original_amounts?.paid_by && (
