@@ -103,8 +103,33 @@ export default function SettlementPage() {
   function handleCopy() {
     if (!data) return
     const decimalMap = Object.fromEntries(currencies.map(c => [c.code, c.decimal_places ?? 2]))
-    const text = formatTransferText(data.transfers, decimalMap)
-    navigator.clipboard.writeText(text).then(() => {
+
+    // Group by currency (same as page display)
+    const byCurr = data.transfers.reduce<Record<string, SettlementItem[]>>((acc, t) => {
+      if (!acc[t.currency]) acc[t.currency] = []
+      acc[t.currency].push(t)
+      return acc
+    }, {})
+    // Sort within each currency by from_member (zh-TW, same as page)
+    Object.values(byCurr).forEach(ts => ts.sort((a, b) => a.from_member.localeCompare(b.from_member, 'zh-TW')))
+    // Currency order matches page allCurrencies
+    const currOrder = [...new Set([
+      ...data.balances.map(b => b.currency),
+      ...data.transfers.map(t => t.currency),
+    ])]
+    const lines: string[] = []
+    for (const curr of currOrder) {
+      const items = byCurr[curr]
+      if (!items?.length) continue
+      if (lines.length > 0) lines.push('')
+      lines.push(`【${curr}】`)
+      for (const item of items) {
+        const dp = decimalMap[item.currency] ?? 2
+        lines.push(`${item.from_member} -> ${item.to_member}: ${item.amount.toFixed(dp)} ${item.currency}`)
+      }
+    }
+
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
