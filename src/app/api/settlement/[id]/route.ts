@@ -14,17 +14,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const supabase = createClient()
 
-    // Read existing original_amounts to preserve other fields
+    // Read existing original_amounts and status to preserve other fields
     const { data: existing } = await supabase
       .from('tp_settlement_items')
-      .select('original_amounts')
+      .select('original_amounts, status')
       .eq('id', id)
       .single()
 
     const prevAmounts = (existing?.original_amounts as Record<string, unknown>) ?? {}
+    const isUnconfirm = existing?.status === 'confirmed' && status === 'paid'
 
     const now = new Date().toISOString()
-    const statusKey = status === 'paid' ? 'paid' : status === 'confirmed' ? 'confirmed' : null
+    const statusKey = isUnconfirm ? 'unconfirmed' : status === 'paid' ? 'paid' : status === 'confirmed' ? 'confirmed' : null
     const updates: { status: RemittanceStatus; proof_url?: string | null; original_amounts: Record<string, unknown> } = {
       status: status as RemittanceStatus,
       original_amounts: {

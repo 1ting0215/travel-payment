@@ -72,6 +72,8 @@ export interface SettlementItem {
     paid_at?: string
     confirmed_by?: string
     confirmed_at?: string
+    unconfirmed_by?: string
+    unconfirmed_at?: string
     settlement_saved_by?: string
     settlement_saved_at?: string
   } | null
