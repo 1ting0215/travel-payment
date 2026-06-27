@@ -239,20 +239,21 @@ export default function SettlementPage() {
       XLSX.utils.book_append_sheet(wb, ws, '我的摘要')
     }
 
-    // 共同分攤明細 sheet
+    // 共同分攤明細 sheet（flat，每分攤人員一列，方便樞紐分析）
     if (sharedExpenses.length > 0) {
       const sharedData: (string | number)[][] = []
-      sharedData.push(['【共同分攤費用明細】'])
-      sharedData.push(['日期', '費用名稱', '分類', '幣別', '金額', '付款人', '備註'])
+      sharedData.push(['日期', '費用名稱', '分攤人員', '分類', '幣別', '金額', '付款人', '備註'])
       for (const e of sharedExpenses) {
         const dp = getDecimals(e.currency)
-        sharedData.push([e.date, e.title, e.category || '無', e.currency, Number(e.amount.toFixed(dp)), e.payer, e.notes ?? ''])
-        // 分攤人員明細
+        const cat = e.category || '無'
         const splits = e.splits ?? []
         if (splits.length > 0) {
           for (const s of splits) {
-            sharedData.push(['', `　└ ${s.member_name}`, '', e.currency, Number(s.amount.toFixed(dp)), '', ''])
+            sharedData.push([e.date, e.title, s.member_name, cat, e.currency, Number(s.amount.toFixed(dp)), e.payer, e.notes ?? ''])
           }
+        } else {
+          // 無分攤資料時保留費用總列
+          sharedData.push([e.date, e.title, '', cat, e.currency, Number(e.amount.toFixed(dp)), e.payer, e.notes ?? ''])
         }
       }
       const wsShared = XLSX.utils.aoa_to_sheet(sharedData)
