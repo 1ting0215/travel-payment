@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient()
 
+    const { data: nb } = await supabase.from('tp_notebooks').select('is_closed').eq('id', notebook_id).single()
+    if (nb?.is_closed) return NextResponse.json({ error: '記帳本已鎖定，無法新增費用' }, { status: 403 })
+
     const { data: expense, error: expenseError } = await supabase
       .from('tp_expenses')
       .insert({

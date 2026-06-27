@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import type { Member, Currency } from '@/types'
+import { formatNum } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -36,6 +37,7 @@ export default function NewExpensePage() {
   const [members, setMembers] = useState<Member[]>([])
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [identity, setIdentity] = useState<string>('')
+  const [isLocked, setIsLocked] = useState(false)
 
   // Form state
   const [title, setTitle] = useState('')
@@ -79,6 +81,7 @@ export default function NewExpensePage() {
     fetch(`/api/notebooks/${id}`)
       .then(r => r.json())
       .then(async data => {
+        setIsLocked(data.notebook?.is_closed ?? false)
         setMembers(data.members ?? [])
         let currList: Currency[] = data.currencies ?? []
 
@@ -292,6 +295,15 @@ export default function NewExpensePage() {
     return (
       <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-zinc-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (isLocked) {
+    return (
+      <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-zinc-700 font-medium">🔒 記帳本已鎖定，無法新增費用</p>
+        <button onClick={() => router.back()} className="text-sm text-indigo-600 hover:underline">← 返回</button>
       </div>
     )
   }
@@ -533,7 +545,7 @@ export default function NewExpensePage() {
 
                     {splitMethod === 'equal' && split.checked && (
                       <span className="text-sm text-zinc-500 min-w-[5rem] text-right">
-                        {currency} {split.amount.toFixed(currDecimals)}
+                        {currency} {formatNum(split.amount, currDecimals)}
                       </span>
                     )}
 
@@ -565,7 +577,7 @@ export default function NewExpensePage() {
                           className="w-16 text-right"
                         />
                         <span className="text-xs text-zinc-400 min-w-[5rem]">
-                          ≈ {currency} {split.amount.toFixed(currDecimals)}
+                          ≈ {currency} {formatNum(split.amount, currDecimals)}
                         </span>
                       </div>
                     )}

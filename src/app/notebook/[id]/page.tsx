@@ -731,7 +731,7 @@ export default function NotebookPage() {
                   disabled={closeLoading || !closeEmail.trim()}
                   variant={notebook.is_closed ? 'default' : 'destructive'}
                 >
-                  {closeLoading ? '處理中…' : notebook.is_closed ? '重新開啟記帳本' : '關閉記帳本'}
+                  {closeLoading ? '處理中…' : notebook.is_closed ? '解鎖記帳本' : '鎖定記帳本'}
                 </Button>
               </div>
             </div>
@@ -739,10 +739,10 @@ export default function NotebookPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Closed banner */}
+      {/* Locked banner */}
       {notebook.is_closed && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-center">
-          <span className="text-yellow-800 text-sm font-medium">⚠ 記帳本已關閉</span>
+          <span className="text-yellow-800 text-sm font-medium">🔒 記帳本已鎖定，費用無法新增、編輯或刪除</span>
         </div>
       )}
 
@@ -835,7 +835,7 @@ export default function NotebookPage() {
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
         {activeTab === 'expenses' && (
-          <ExpenseList expenses={expenses} identity={identity} notebookId={id} />
+          <ExpenseList expenses={expenses} identity={identity} notebookId={id} isLocked={notebook.is_closed} />
         )}
         {activeTab === 'collection' && (
           <CollectionTab notebookId={id} members={members} identity={identity} />
@@ -855,7 +855,7 @@ export default function NotebookPage() {
   )
 }
 
-function ExpenseList({ expenses, identity, notebookId }: { expenses: Expense[]; identity: string | null; notebookId: string }) {
+function ExpenseList({ expenses, identity, notebookId, isLocked }: { expenses: Expense[]; identity: string | null; notebookId: string; isLocked: boolean }) {
   if (expenses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -881,13 +881,13 @@ function ExpenseList({ expenses, identity, notebookId }: { expenses: Expense[]; 
   return (
     <div className="flex flex-col gap-3">
       {expenses.map(expense => (
-        <ExpenseCard key={expense.id} expense={expense} identity={identity} notebookId={notebookId} />
+        <ExpenseCard key={expense.id} expense={expense} identity={identity} notebookId={notebookId} isLocked={isLocked} />
       ))}
     </div>
   )
 }
 
-function ExpenseCard({ expense, identity, notebookId }: { expense: Expense; identity: string | null; notebookId: string }) {
+function ExpenseCard({ expense, identity, notebookId, isLocked }: { expense: Expense; identity: string | null; notebookId: string; isLocked: boolean }) {
   const isOwn = expense.created_by === identity
   const isPrivate = expense.visibility === 'private'
   const router = useRouter()
@@ -899,8 +899,8 @@ function ExpenseCard({ expense, identity, notebookId }: { expense: Expense; iden
 
   return (
     <Card
-      className={`cursor-pointer hover:shadow-md transition-shadow ${isOwn && isPrivate ? 'border-indigo-100 bg-indigo-50/30' : ''}`}
-      onClick={() => router.push(`/notebook/${notebookId}/expenses/${expense.id}/edit`)}
+      className={`transition-shadow ${isLocked ? 'cursor-default opacity-80' : 'cursor-pointer hover:shadow-md'} ${isOwn && isPrivate ? 'border-indigo-100 bg-indigo-50/30' : ''}`}
+      onClick={() => !isLocked && router.push(`/notebook/${notebookId}/expenses/${expense.id}/edit`)}
     >
       <CardContent className="pt-4">
         <div className="flex items-start justify-between gap-3">

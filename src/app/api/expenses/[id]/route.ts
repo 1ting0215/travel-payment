@@ -30,6 +30,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const supabase = createClient()
 
+    const { data: exp } = await supabase.from('tp_expenses').select('notebook_id').eq('id', id).single()
+    if (exp) {
+      const { data: nb } = await supabase.from('tp_notebooks').select('is_closed').eq('id', exp.notebook_id).single()
+      if (nb?.is_closed) return NextResponse.json({ error: '記帳本已鎖定，無法編輯費用' }, { status: 403 })
+    }
+
     const { error: updateError } = await supabase
       .from('tp_expenses')
       .update({ title, date, amount, currency, payer, split_method, notes: notes ?? null, visibility, receipt_url: receipt_url ?? null, category: category || null })
@@ -65,6 +71,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const { id } = await params
     const supabase = createClient()
+
+    const { data: exp } = await supabase.from('tp_expenses').select('notebook_id').eq('id', id).single()
+    if (exp) {
+      const { data: nb } = await supabase.from('tp_notebooks').select('is_closed').eq('id', exp.notebook_id).single()
+      if (nb?.is_closed) return NextResponse.json({ error: '記帳本已鎖定，無法刪除費用' }, { status: 403 })
+    }
 
     await supabase.from('tp_expense_splits').delete().eq('expense_id', id)
 

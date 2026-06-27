@@ -35,6 +35,7 @@ export default function SettlementPage() {
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [isLocked, setIsLocked] = useState(false)
   const [identity, setIdentity] = useState<string | null>(null)
   const [privateExpenses, setPrivateExpenses] = useState<Expense[]>([])
   const [sharedExpenses, setSharedExpenses] = useState<Expense[]>([])
@@ -57,6 +58,7 @@ export default function SettlementPage() {
       if (notebookRes.ok) {
         const notebookJson = await notebookRes.json()
         setCurrencies(notebookJson.currencies ?? [])
+        setIsLocked(notebookJson.notebook?.is_closed ?? false)
       }
     } catch {
       setError('網路錯誤')
@@ -625,9 +627,10 @@ export default function SettlementPage() {
               size="lg"
               className="w-full"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || isLocked}
+              title={isLocked ? '記帳本已鎖定' : undefined}
             >
-              {saving ? '儲存中…' : saved ? '✓ 已儲存' : '儲存結算'}
+              {saving ? '儲存中…' : saved ? '✓ 已儲存' : isLocked ? '🔒 記帳本已鎖定' : '儲存結算'}
             </Button>
 
             {saved && (

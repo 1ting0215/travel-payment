@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import type { Member, Currency, Expense } from '@/types'
+import { formatNum } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -40,6 +41,7 @@ export default function EditExpensePage() {
   const [members, setMembers] = useState<Member[]>([])
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [identity, setIdentity] = useState<string>('')
+  const [isLocked, setIsLocked] = useState(false)
 
   // Form state
   const [title, setTitle] = useState('')
@@ -74,7 +76,8 @@ export default function EditExpensePage() {
     Promise.all([
       fetch(`/api/notebooks/${id}`).then(r => r.json()),
       fetch(`/api/expenses/${expenseId}`).then(r => r.json()),
-    ]).then(([notebookData, expense]: [{ members: Member[]; currencies: Currency[] }, Expense]) => {
+    ]).then(([notebookData, expense]: [{ notebook: { is_closed: boolean }; members: Member[]; currencies: Currency[] }, Expense]) => {
+      setIsLocked(notebookData.notebook?.is_closed ?? false)
       const memberList = notebookData.members ?? []
       const currList = notebookData.currencies ?? []
       setMembers(memberList)
@@ -475,7 +478,7 @@ export default function EditExpensePage() {
 
                     {splitMethod === 'equal' && split.checked && (
                       <span className="text-sm text-zinc-500 min-w-[5rem] text-right">
-                        {currency} {split.amount.toFixed(currDecimals)}
+                        {currency} {formatNum(split.amount, currDecimals)}
                       </span>
                     )}
 
@@ -507,7 +510,7 @@ export default function EditExpensePage() {
                           className="w-16 text-right"
                         />
                         <span className="text-xs text-zinc-400 min-w-[5rem]">
-                          ≈ {currency} {split.amount.toFixed(currDecimals)}
+                          ≈ {currency} {formatNum(split.amount, currDecimals)}
                         </span>
                       </div>
                     )}
@@ -572,7 +575,13 @@ export default function EditExpensePage() {
           <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
         )}
 
-        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+        {isLocked && (
+          <p className="text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-center">
+            🔒 記帳本已鎖定，無法編輯或刪除費用
+          </p>
+        )}
+
+        <Button type="submit" size="lg" className="w-full" disabled={submitting || isLocked}>
           {submitting ? '更新中…' : '更新費用'}
         </Button>
 
@@ -581,6 +590,7 @@ export default function EditExpensePage() {
           variant="ghost"
           className="w-full text-red-500 hover:text-red-700 hover:bg-red-50"
           onClick={() => setDeleteOpen(true)}
+          disabled={isLocked}
         >
           刪除此筆費用
         </Button>
