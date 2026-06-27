@@ -24,13 +24,13 @@ const STATUS_LABELS: Record<RemittanceStatus, string> = {
 const STATUS_BUTTON: Record<RemittanceStatus, string> = {
   unpaid: '付款者標記 已付款',
   paid: '收款者已確認入帳',
-  confirmed: '收款者已確認',
+  confirmed: '取消確認（返回已付款）',
 }
 
 const STATUS_NEXT: Record<RemittanceStatus, RemittanceStatus> = {
   unpaid: 'paid',
   paid: 'confirmed',
-  confirmed: 'unpaid',
+  confirmed: 'paid',
 }
 
 const STATUS_VARIANT: Record<RemittanceStatus, 'destructive' | 'warning' | 'success'> = {
@@ -403,7 +403,7 @@ function TransferCard({
               variant="outline"
               size="sm"
               onClick={() => onStatusUpdate(item)}
-              disabled={isUpdating || disabled || item.status === 'confirmed'}
+              disabled={isUpdating || disabled}
             >
               {isUpdating ? '更新中…' : STATUS_BUTTON[item.status]}
             </Button>
