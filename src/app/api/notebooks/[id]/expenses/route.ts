@@ -12,10 +12,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .from('tp_expenses')
       .select('*, splits:tp_expense_splits(*)')
       .eq('notebook_id', id)
-      .order('date', { ascending: false })
+      .order('visibility', { ascending: false })
+      .order('date', { ascending: true })
 
     if (createdBy) {
-      query = query.or(`visibility.eq.shared,and(visibility.eq.private,created_by.eq.${createdBy})`)
+      query = query.or(`visibility.eq.shared,and(visibility.eq.private,payer.eq.${createdBy})`)
     } else {
       query = query.eq('visibility', 'shared')
     }

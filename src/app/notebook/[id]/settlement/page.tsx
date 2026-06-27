@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
-import type { Balance, SettlementItem, Currency } from '@/types'
+import type { Balance, SettlementItem, Currency, Expense } from '@/types'
 import { formatTransferText } from '@/lib/settlement'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,6 +34,8 @@ export default function SettlementPage() {
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [identity, setIdentity] = useState<string | null>(null)
+  const [privateExpenses, setPrivateExpenses] = useState<Expense[]>([])
 
   const fetchData = useCallback(async () => {
     try {
@@ -62,6 +64,19 @@ export default function SettlementPage() {
   }, [id])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(`notebook_identity_${id}`)
+    if (stored) setIdentity(stored)
+  }, [id])
+
+  useEffect(() => {
+    if (!identity) return
+    fetch(`/api/notebooks/${id}/expenses?created_by=${encodeURIComponent(identity)}`)
+      .then(r => r.json())
+      .then((exps: Expense[]) => setPrivateExpenses(exps.filter(e => e.visibility === 'private')))
+      .catch(() => {})
+  }, [id, identity])
 
   function findExchangeRate(currencyCode: string): { rate: number; base: string } | null {
     const c = currencies.find(c => c.code === currencyCode)
@@ -169,6 +184,46 @@ export default function SettlementPage() {
       XLSX.utils.book_append_sheet(wb, ws, curr)
     }
 
+    // 我的費用摘要 sheet
+    if (identity && summaryAllCurrencies.length > 0) {
+      const summaryData: (string | number)[][] = []
+      summaryData.push([`【我的費用摘要 - ${identity}】`])
+      summaryData.push([])
+      summaryData.push(['幣別', '個人費用', '共同分攤（應付）', '合計'])
+      for (const curr of summaryAllCurrencies) {
+        const dp = getDecimals(curr)
+        const priv = privateExpensesByCurrency[curr] ?? 0
+        const owed = myOwedByCurrency[curr] ?? 0
+        summaryData.push([
+          curr,
+          Number(priv.toFixed(dp)),
+          Number(owed.toFixed(dp)),
+          Number((priv + owed).toFixed(dp)),
+        ])
+      }
+
+      if (privateExpenses.length > 0) {
+        summaryData.push([])
+        summaryData.push(['【個人費用明細】'])
+        summaryData.push(['日期', '費用名稱', '幣別', '金額'])
+        for (const e of privateExpenses) {
+          const dp = getDecimals(e.currency)
+          summaryData.push([e.date, e.title, e.currency, Number(e.amount.toFixed(dp))])
+        }
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(summaryData)
+      const colWidths = summaryData.reduce<number[]>((widths, row) => {
+        row.forEach((cell, i) => {
+          const len = String(cell).length + 2
+          widths[i] = Math.max(widths[i] ?? 8, len)
+        })
+        return widths
+      }, [])
+      ws['!cols'] = colWidths.map(w => ({ wch: Math.min(w, 20) }))
+      XLSX.utils.book_append_sheet(wb, ws, '我的摘要')
+    }
+
     XLSX.writeFile(wb, '結算明細.xlsx')
   }
 
@@ -207,6 +262,26 @@ export default function SettlementPage() {
     acc[t.currency].push(t)
     return acc
   }, {}) ?? {}
+
+  // 個人費用 by currency
+  const privateExpensesByCurrency = privateExpenses.reduce<Record<string, number>>((acc, e) => {
+    acc[e.currency] = (acc[e.currency] ?? 0) + e.amount
+    return acc
+  }, {})
+
+  // 共同分攤應付 by currency (from current user's balance)
+  const myOwedByCurrency = identity
+    ? Object.keys(balancesByCurrency).reduce<Record<string, number>>((acc, curr) => {
+        const myBalance = balancesByCurrency[curr].find(b => b.member === identity)
+        if (myBalance && myBalance.owed > 0) acc[curr] = myBalance.owed
+        return acc
+      }, {})
+    : {}
+
+  const summaryAllCurrencies = [...new Set([
+    ...Object.keys(privateExpensesByCurrency),
+    ...Object.keys(myOwedByCurrency),
+  ])]
 
   if (loading) return <div className="min-h-screen bg-zinc-50"><Spinner /></div>
   if (error) {
@@ -357,6 +432,68 @@ export default function SettlementPage() {
             </div>
           )
         })}
+
+        {/* 我的費用摘要 */}
+        {identity && summaryAllCurrencies.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>我的費用摘要（{identity}）</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-100">
+                      <th className="text-left py-2 font-medium text-zinc-500">幣別</th>
+                      <th className="text-right py-2 font-medium text-zinc-500">個人費用</th>
+                      <th className="text-right py-2 font-medium text-zinc-500">共同分攤（應付）</th>
+                      <th className="text-right py-2 font-medium text-zinc-500">合計</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summaryAllCurrencies.map(curr => {
+                      const dp = getDecimals(curr)
+                      const priv = privateExpensesByCurrency[curr] ?? 0
+                      const owed = myOwedByCurrency[curr] ?? 0
+                      const total = priv + owed
+                      const exchInfo = findExchangeRate(curr)
+                      const baseDp = exchInfo ? getDecimals(exchInfo.base) : 2
+                      return (
+                        <tr key={curr} className="border-b border-zinc-50 last:border-0">
+                          <td className="py-2.5 font-medium text-zinc-800">{curr}</td>
+                          <td className="py-2.5 text-right text-zinc-600">
+                            {priv.toFixed(dp)}
+                            {exchInfo && priv > 0 && (
+                              <div className="text-xs text-zinc-400">
+                                ≈ {(priv * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 text-right text-zinc-600">
+                            {owed.toFixed(dp)}
+                            {exchInfo && owed > 0 && (
+                              <div className="text-xs text-zinc-400">
+                                ≈ {(owed * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 text-right font-semibold text-zinc-900">
+                            {total.toFixed(dp)}
+                            {exchInfo && total > 0 && (
+                              <div className="text-xs text-zinc-400">
+                                ≈ {(total * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Actions */}
         {data && data.transfers.length > 0 && (
