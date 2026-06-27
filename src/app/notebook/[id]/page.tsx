@@ -679,8 +679,8 @@ export default function NotebookPage() {
               </Button>
             </a>
 
-            {/* 角色密碼變更 — 僅限通過密碼驗證的登入者 */}
-            {identity && passwordVerified && (
+            {/* 角色密碼變更 */}
+            {identity && (
               <div className="border-t border-zinc-100 pt-3 mt-1">
                 <p className="text-sm font-medium text-zinc-700 mb-2">角色密碼變更</p>
                 <div className="flex flex-col gap-2">
