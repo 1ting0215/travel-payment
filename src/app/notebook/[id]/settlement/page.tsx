@@ -247,6 +247,13 @@ export default function SettlementPage() {
       for (const e of sharedExpenses) {
         const dp = getDecimals(e.currency)
         sharedData.push([e.date, e.title, e.category || '無', e.currency, Number(e.amount.toFixed(dp)), e.payer, e.notes ?? ''])
+        // 分攤人員明細
+        const splits = e.splits ?? []
+        if (splits.length > 0) {
+          for (const s of splits) {
+            sharedData.push(['', `　└ ${s.member_name}`, '', e.currency, Number(s.amount.toFixed(dp)), '', ''])
+          }
+        }
       }
       const wsShared = XLSX.utils.aoa_to_sheet(sharedData)
       const sharedColWidths = sharedData.reduce<number[]>((widths, row) => {
