@@ -23,12 +23,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const prevAmounts = (existing?.original_amounts as Record<string, unknown>) ?? {}
 
+    const now = new Date().toISOString()
+    const statusKey = status === 'paid' ? 'paid' : status === 'confirmed' ? 'confirmed' : null
     const updates: { status: RemittanceStatus; proof_url?: string | null; original_amounts: Record<string, unknown> } = {
       status: status as RemittanceStatus,
       original_amounts: {
         ...prevAmounts,
         status_updated_by: updated_by || null,
-        status_updated_at: new Date().toISOString(),
+        status_updated_at: now,
+        ...(statusKey && updated_by ? {
+          [`${statusKey}_by`]: updated_by,
+          [`${statusKey}_at`]: now,
+        } : {}),
       },
     }
     if (proof_url !== undefined) {

@@ -401,17 +401,26 @@ function TransferCard({
             >
               {isUpdating ? '更新中…' : item.status === 'confirmed' ? '已確認' : `標記為 ${STATUS_LABELS[STATUS_NEXT[item.status]]}`}
             </Button>
-            {item.original_amounts?.status_updated_by && (
-              <span className="text-xs text-zinc-400">
-                {item.original_amounts.status_updated_by} ・{' '}
-                {new Date(item.original_amounts.status_updated_at!).toLocaleString('zh-TW', {
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            )}
+            <div className="flex flex-col gap-0.5">
+              {item.original_amounts?.paid_by && (
+                <span className="text-xs text-zinc-400">
+                  付款：{item.original_amounts.paid_by} ・{' '}
+                  {new Date(item.original_amounts.paid_at!).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {item.original_amounts?.confirmed_by && (
+                <span className="text-xs text-zinc-400">
+                  確認：{item.original_amounts.confirmed_by} ・{' '}
+                  {new Date(item.original_amounts.confirmed_at!).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {!item.original_amounts?.paid_by && item.original_amounts?.status_updated_by && (
+                <span className="text-xs text-zinc-400">
+                  {item.original_amounts.status_updated_by} ・{' '}
+                  {new Date(item.original_amounts.status_updated_at!).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
           </div>
 
           {showCollection && item.status !== 'confirmed' && !disabled && (

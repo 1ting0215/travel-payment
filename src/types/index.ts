@@ -68,6 +68,12 @@ export interface SettlementItem {
     to?: number
     status_updated_by?: string
     status_updated_at?: string
+    paid_by?: string
+    paid_at?: string
+    confirmed_by?: string
+    confirmed_at?: string
+    settlement_saved_by?: string
+    settlement_saved_at?: string
   } | null
 }
 
