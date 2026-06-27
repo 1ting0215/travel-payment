@@ -375,6 +375,21 @@ function TransferCard({
           </div>
         )}
 
+        {/* Proof image */}
+        {item.proof_url && (
+          <div className="rounded-lg border border-zinc-100 bg-zinc-50 p-2 flex flex-col gap-1">
+            <p className="text-xs text-zinc-400 font-medium">付款憑證</p>
+            <a href={item.proof_url} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.proof_url}
+                alt="付款憑證"
+                className="max-h-48 rounded object-contain cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            </a>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
@@ -399,11 +414,11 @@ function TransferCard({
             )}
           </div>
 
-          {item.status === 'unpaid' && showCollection && !disabled && (
+          {showCollection && item.status !== 'confirmed' && !disabled && (
             <div className="flex flex-col gap-1">
               <label className="cursor-pointer">
                 <span className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-lg border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 transition-colors">
-                  上傳付款憑證
+                  {item.proof_url ? '重新上傳憑證' : '上傳付款憑證'}
                 </span>
                 <input
                   type="file"
@@ -415,19 +430,8 @@ function TransferCard({
                   }}
                 />
               </label>
-              <p className="text-xs text-zinc-400">限圖片格式，1 MB 以內</p>
+              <p className="text-xs text-zinc-400">選填・限圖片格式，1 MB 以內</p>
             </div>
-          )}
-
-          {item.proof_url && (
-            <a
-              href={item.proof_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors"
-            >
-              查看憑證
-            </a>
           )}
         </div>
       </CardContent>
