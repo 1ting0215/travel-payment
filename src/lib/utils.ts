@@ -11,8 +11,12 @@ export function generateNotebookToken(): string {
   return Array.from(array, b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function formatAmount(amount: number, currency: string): string {
-  return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+export function formatNum(amount: number, decimalPlaces: number): string {
+  return amount.toLocaleString('en-US', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })
+}
+
+export function formatAmount(amount: number, currency: string, decimalPlaces = 2): string {
+  return `${currency} ${formatNum(amount, decimalPlaces)}`
 }
 
 export function addMonths(date: Date, months: number): Date {
