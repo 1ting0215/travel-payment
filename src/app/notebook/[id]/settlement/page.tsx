@@ -268,6 +268,7 @@ export default function SettlementPage() {
     acc[t.currency].push(t)
     return acc
   }, {}) ?? {}
+  Object.values(transfersByCurrency).forEach(ts => ts.sort((a, b) => a.from_member.localeCompare(b.from_member, 'zh-TW')))
 
   const CATEGORIES = ['食', '住', '行', '其他', '無']
 
