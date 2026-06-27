@@ -714,7 +714,7 @@ export default function NotebookPage() {
             )}
 
             <div className="border-t border-zinc-100 pt-3 mt-1">
-              <p className="text-sm font-medium text-zinc-700 mb-2">關閉記帳本</p>
+              <p className="text-sm font-medium text-zinc-700 mb-2">鎖定記帳本</p>
               <p className="text-xs text-zinc-500 mb-3">請輸入建立記帳本的 Email 以驗證身份</p>
               <div className="flex flex-col gap-3">
                 <Input
