@@ -908,7 +908,7 @@ function ExpenseCard({ expense, identity, notebookId }: { expense: Expense; iden
             <div className="flex items-center gap-2 mb-1">
               <span className="font-semibold text-zinc-900 truncate">{expense.title}</span>
               <Badge variant={isPrivate ? 'warning' : 'default'}>
-                {isPrivate ? '個人' : '共同'}
+                {isPrivate ? '個人' : '共同'}{expense.category ? ` · ${expense.category}` : ' · 無'}
               </Badge>
             </div>
             <p className="text-sm text-zinc-500">
