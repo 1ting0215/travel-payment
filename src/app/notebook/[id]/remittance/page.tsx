@@ -397,9 +397,9 @@ function TransferCard({
               variant="outline"
               size="sm"
               onClick={() => onStatusUpdate(item)}
-              disabled={isUpdating || disabled}
+              disabled={isUpdating || disabled || item.status === 'confirmed'}
             >
-              {isUpdating ? '更新中…' : `標記為 ${STATUS_LABELS[STATUS_NEXT[item.status]]}`}
+              {isUpdating ? '更新中…' : item.status === 'confirmed' ? '已確認' : `標記為 ${STATUS_LABELS[STATUS_NEXT[item.status]]}`}
             </Button>
             {item.original_amounts?.status_updated_by && (
               <span className="text-xs text-zinc-400">
