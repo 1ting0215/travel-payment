@@ -34,6 +34,7 @@ export default function SettlementPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [lastSaved, setLastSaved] = useState<{ by: string; at: string } | null>(null)
   const [error, setError] = useState('')
   const [isLocked, setIsLocked] = useState(false)
   const [identity, setIdentity] = useState<string | null>(null)
@@ -42,9 +43,10 @@ export default function SettlementPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [settlementRes, notebookRes] = await Promise.all([
+      const [settlementRes, notebookRes, itemsRes] = await Promise.all([
         fetch(`/api/notebooks/${id}/settlement`),
         fetch(`/api/notebooks/${id}`),
+        fetch(`/api/notebooks/${id}/settlement-items`),
       ])
 
       if (!settlementRes.ok) {
@@ -59,6 +61,15 @@ export default function SettlementPage() {
         const notebookJson = await notebookRes.json()
         setCurrencies(notebookJson.currencies ?? [])
         setIsLocked(notebookJson.notebook?.is_closed ?? false)
+      }
+
+      if (itemsRes.ok) {
+        const items: Array<{ original_amounts?: Record<string, unknown> | null }> = await itemsRes.json()
+        const first = items[0]
+        const oa = first?.original_amounts as Record<string, string> | null | undefined
+        if (oa?.settlement_saved_by) {
+          setLastSaved({ by: oa.settlement_saved_by, at: oa.settlement_saved_at })
+        }
       }
     } catch {
       setError('網路錯誤')
@@ -310,10 +321,11 @@ export default function SettlementPage() {
       const res = await fetch(`/api/notebooks/${id}/settlement`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transfers: data.transfers }),
+        body: JSON.stringify({ transfers: data.transfers, saved_by: identity }),
       })
       if (res.ok) {
         setSaved(true)
+        if (identity) setLastSaved({ by: identity, at: new Date().toISOString() })
         setTimeout(() => setSaved(false), 3000)
       } else {
         const json = await res.json()
@@ -623,15 +635,22 @@ export default function SettlementPage() {
               {copied ? '✓ 已複製' : '複製 LINE 文字'}
             </Button>
 
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={handleSave}
-              disabled={saving || isLocked}
-              title={isLocked ? '記帳本已鎖定' : undefined}
-            >
-              {saving ? '儲存中…' : saved ? '✓ 已儲存' : isLocked ? '🔒 記帳本已鎖定' : '儲存結算'}
-            </Button>
+            <div className="flex flex-col gap-1">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={handleSave}
+                disabled={saving || isLocked}
+                title={isLocked ? '記帳本已鎖定' : undefined}
+              >
+                {saving ? '儲存中…' : saved ? '✓ 已儲存' : isLocked ? '🔒 記帳本已鎖定' : '儲存結算'}
+              </Button>
+              {lastSaved && (
+                <p className="text-xs text-zinc-400 text-center">
+                  上次儲存：{lastSaved.by} · {new Date(lastSaved.at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
 
             {saved && (
               <Button

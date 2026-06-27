@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
-    const { transfers } = body
+    const { transfers, saved_by } = body
     const { id } = await params
 
     if (!transfers || !Array.isArray(transfers)) {
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Delete existing settlement items before re-saving
     await supabase.from('tp_settlement_items').delete().eq('notebook_id', id)
 
+    const savedAt = new Date().toISOString()
     const rows = transfers.map((t: { from_member: string; to_member: string; amount: number; currency: string }) => ({
       notebook_id: id,
       from_member: t.from_member,
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       currency: t.currency,
       status: 'unpaid',
       proof_url: null,
+      original_amounts: saved_by ? { settlement_saved_by: saved_by, settlement_saved_at: savedAt } : null,
     }))
 
     const { data, error } = await supabase.from('tp_settlement_items').insert(rows).select()
