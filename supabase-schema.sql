@@ -98,6 +98,11 @@ create table tp_collection_info (
 --   '0 2 * * *',
 --   $$
 --     delete from tp_notebooks
---     where last_accessed_at < now() - interval '14 days';
+--     where last_accessed_at < now() - interval '14 days'
+--       and creator_email != 'ting.chang@104.com.tw';
 --   $$
 -- );
+
+-- If cron job already exists, update it:
+-- select cron.unschedule('cleanup-inactive-notebooks');
+-- then re-run the schedule above.
