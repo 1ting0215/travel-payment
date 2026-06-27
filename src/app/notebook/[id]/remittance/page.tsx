@@ -418,7 +418,7 @@ function TransferCard({
             <div className="flex flex-col gap-1">
               <label className="cursor-pointer">
                 <span className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-lg border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 transition-colors">
-                  {item.proof_url ? '重新上傳憑證' : '上傳付款憑證'}
+                  {item.proof_url ? '重新上傳憑證' : '上傳付款憑證（選填）'}
                 </span>
                 <input
                   type="file"

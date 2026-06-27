@@ -899,8 +899,8 @@ function ExpenseCard({ expense, identity, notebookId, isLocked }: { expense: Exp
 
   return (
     <Card
-      className={`transition-shadow ${isLocked ? 'cursor-default opacity-80' : 'cursor-pointer hover:shadow-md'} ${isOwn && isPrivate ? 'border-indigo-100 bg-indigo-50/30' : ''}`}
-      onClick={() => !isLocked && router.push(`/notebook/${notebookId}/expenses/${expense.id}/edit`)}
+      className={`cursor-pointer hover:shadow-md transition-shadow ${isOwn && isPrivate ? 'border-indigo-100 bg-indigo-50/30' : ''}`}
+      onClick={() => router.push(`/notebook/${notebookId}/expenses/${expense.id}/edit`)}
     >
       <CardContent className="pt-4">
         <div className="flex items-start justify-between gap-3">
