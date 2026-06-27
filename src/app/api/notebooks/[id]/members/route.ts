@@ -41,6 +41,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const supabase = createClient()
 
+    if (action === 'check') {
+      const { data } = await supabase
+        .from('tp_members')
+        .select('password')
+        .eq('notebook_id', id)
+        .eq('name', name)
+        .single()
+      return NextResponse.json({ exists: !!data, has_password: !!(data?.password) })
+    }
+
     if (action === 'verify') {
       const { data, error } = await supabase
         .from('tp_members')

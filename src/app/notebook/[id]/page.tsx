@@ -164,9 +164,33 @@ export default function NotebookPage() {
     }
   }
 
+  async function serverCheck(name: string): Promise<{ exists: boolean; has_password: boolean }> {
+    const res = await fetch(`/api/notebooks/${id}/members`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'check', name }),
+    })
+    return res.json()
+  }
+
   async function handleNewMemberLogin(name: string) {
     setIdentityLoading(true)
     try {
+      // Always verify server state — client list may be stale
+      const check = await serverCheck(name)
+      if (check.exists) {
+        setIdentityPending(name)
+        if (check.has_password) {
+          setIdentityStep('password')
+          setPasswordInput('')
+          setPasswordError('')
+        } else {
+          setIdentityStep('set_password')
+          setSetupPassword('')
+        }
+        return
+      }
+      // Truly new member
       await fetch(`/api/notebooks/${id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,6 +225,15 @@ export default function NotebookPage() {
   async function handleSetupPasswordConfirm(skip: boolean) {
     setIdentityLoading(true)
     try {
+      // Re-verify server state before completing login
+      const check = await serverCheck(identityPending)
+      if (check.has_password) {
+        // Password was set between page load and now — must verify
+        setIdentityStep('password')
+        setPasswordInput('')
+        setPasswordError('')
+        return
+      }
       if (!skip && setupPassword.trim()) {
         await fetch(`/api/notebooks/${id}/members`, {
           method: 'PATCH',
