@@ -304,6 +304,12 @@ export default function EditExpensePage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5 pb-24">
+        {isLocked && (
+          <p className="text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-center">
+            🔒 記帳本已鎖定，僅供檢視
+          </p>
+        )}
+        <fieldset disabled={isLocked} className={`contents${isLocked ? ' [&_input]:opacity-60 [&_textarea]:opacity-60 [&_button]:opacity-60 [&_select]:opacity-60' : ''}`}>
         {/* Basic info */}
         <Card>
           <CardContent className="pt-4 flex flex-col gap-4">
@@ -571,29 +577,28 @@ export default function EditExpensePage() {
           </CardContent>
         </Card>
 
+        </fieldset>
+
         {error && (
           <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
         )}
 
-        {isLocked && (
-          <p className="text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-center">
-            🔒 記帳本已鎖定，無法編輯或刪除費用
-          </p>
+        {!isLocked && (
+          <>
+            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              {submitting ? '更新中…' : '更新費用'}
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={() => setDeleteOpen(true)}
+            >
+              刪除此筆費用
+            </Button>
+          </>
         )}
-
-        <Button type="submit" size="lg" className="w-full" disabled={submitting || isLocked}>
-          {submitting ? '更新中…' : '更新費用'}
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full text-red-500 hover:text-red-700 hover:bg-red-50"
-          onClick={() => setDeleteOpen(true)}
-          disabled={isLocked}
-        >
-          刪除此筆費用
-        </Button>
       </form>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
