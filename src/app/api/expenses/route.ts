@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
       notes,
       visibility,
       created_by,
+      category,
     } = body
 
     if (!notebook_id || !title || !date || amount == null || !currency || !payer || !split_method || !splits || !visibility || !created_by) {
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
         split_method: split_method as SplitMethod,
         notes: notes ?? null,
         visibility: visibility as Visibility,
+        category: category || null,
         created_by,
       })
       .select()

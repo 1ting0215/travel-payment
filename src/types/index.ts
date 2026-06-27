@@ -39,6 +39,7 @@ export interface Expense {
   notes: string | null
   receipt_url: string | null
   visibility: Visibility
+  category: string | null
   created_by: string
   created_at: string
   splits?: ExpenseSplit[]

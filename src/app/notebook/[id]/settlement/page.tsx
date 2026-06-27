@@ -188,27 +188,33 @@ export default function SettlementPage() {
     if (identity && summaryAllCurrencies.length > 0) {
       const summaryData: (string | number)[][] = []
       summaryData.push([`【我的費用摘要 - ${identity}】`])
-      summaryData.push([])
-      summaryData.push(['幣別', '個人費用', '共同分攤（應付）', '合計'])
+
       for (const curr of summaryAllCurrencies) {
         const dp = getDecimals(curr)
-        const priv = privateExpensesByCurrency[curr] ?? 0
+        const catMap = privateExpensesByCurrencyAndCategory[curr] ?? {}
+        const privTotal = privateExpensesByCurrency[curr] ?? 0
         const owed = myOwedByCurrency[curr] ?? 0
-        summaryData.push([
-          curr,
-          Number(priv.toFixed(dp)),
-          Number(owed.toFixed(dp)),
-          Number((priv + owed).toFixed(dp)),
-        ])
+
+        summaryData.push([])
+        summaryData.push([`▶ ${curr}`])
+        summaryData.push(['項目', '金額'])
+
+        for (const cat of CATEGORIES) {
+          const amt = catMap[cat]
+          if (amt) summaryData.push([`個人 - ${cat}`, Number(amt.toFixed(dp))])
+        }
+        if (privTotal > 0) summaryData.push(['個人小計', Number(privTotal.toFixed(dp))])
+        if (owed > 0) summaryData.push(['共同分攤（應付）', Number(owed.toFixed(dp))])
+        summaryData.push(['合計', Number((privTotal + owed).toFixed(dp))])
       }
 
       if (privateExpenses.length > 0) {
         summaryData.push([])
         summaryData.push(['【個人費用明細】'])
-        summaryData.push(['日期', '費用名稱', '幣別', '金額'])
+        summaryData.push(['日期', '費用名稱', '分類', '幣別', '金額'])
         for (const e of privateExpenses) {
           const dp = getDecimals(e.currency)
-          summaryData.push([e.date, e.title, e.currency, Number(e.amount.toFixed(dp))])
+          summaryData.push([e.date, e.title, e.category || '無', e.currency, Number(e.amount.toFixed(dp))])
         }
       }
 
@@ -263,9 +269,19 @@ export default function SettlementPage() {
     return acc
   }, {}) ?? {}
 
-  // 個人費用 by currency
-  const privateExpensesByCurrency = privateExpenses.reduce<Record<string, number>>((acc, e) => {
-    acc[e.currency] = (acc[e.currency] ?? 0) + e.amount
+  const CATEGORIES = ['食', '住', '行', '其他', '無']
+
+  // 個人費用 by currency + category
+  const privateExpensesByCurrencyAndCategory = privateExpenses.reduce<Record<string, Record<string, number>>>((acc, e) => {
+    const cat = e.category || '無'
+    if (!acc[e.currency]) acc[e.currency] = {}
+    acc[e.currency][cat] = (acc[e.currency][cat] ?? 0) + e.amount
+    return acc
+  }, {})
+
+  // 個人費用總計 by currency
+  const privateExpensesByCurrency = Object.entries(privateExpensesByCurrencyAndCategory).reduce<Record<string, number>>((acc, [curr, cats]) => {
+    acc[curr] = Object.values(cats).reduce((s, v) => s + v, 0)
     return acc
   }, {})
 
@@ -440,56 +456,76 @@ export default function SettlementPage() {
               <CardTitle>我的費用摘要（{identity}）</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-100">
-                      <th className="text-left py-2 font-medium text-zinc-500">幣別</th>
-                      <th className="text-right py-2 font-medium text-zinc-500">個人費用</th>
-                      <th className="text-right py-2 font-medium text-zinc-500">共同分攤（應付）</th>
-                      <th className="text-right py-2 font-medium text-zinc-500">合計</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summaryAllCurrencies.map(curr => {
-                      const dp = getDecimals(curr)
-                      const priv = privateExpensesByCurrency[curr] ?? 0
-                      const owed = myOwedByCurrency[curr] ?? 0
-                      const total = priv + owed
-                      const exchInfo = findExchangeRate(curr)
-                      const baseDp = exchInfo ? getDecimals(exchInfo.base) : 2
-                      return (
-                        <tr key={curr} className="border-b border-zinc-50 last:border-0">
-                          <td className="py-2.5 font-medium text-zinc-800">{curr}</td>
-                          <td className="py-2.5 text-right text-zinc-600">
-                            {priv.toFixed(dp)}
-                            {exchInfo && priv > 0 && (
-                              <div className="text-xs text-zinc-400">
-                                ≈ {(priv * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2.5 text-right text-zinc-600">
-                            {owed.toFixed(dp)}
-                            {exchInfo && owed > 0 && (
-                              <div className="text-xs text-zinc-400">
-                                ≈ {(owed * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2.5 text-right font-semibold text-zinc-900">
-                            {total.toFixed(dp)}
-                            {exchInfo && total > 0 && (
-                              <div className="text-xs text-zinc-400">
-                                ≈ {(total * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div className="flex flex-col gap-5">
+                {summaryAllCurrencies.map(curr => {
+                  const dp = getDecimals(curr)
+                  const catMap = privateExpensesByCurrencyAndCategory[curr] ?? {}
+                  const privTotal = privateExpensesByCurrency[curr] ?? 0
+                  const owed = myOwedByCurrency[curr] ?? 0
+                  const total = privTotal + owed
+                  const exchInfo = findExchangeRate(curr)
+                  const baseDp = exchInfo ? getDecimals(exchInfo.base) : 2
+
+                  const activeCats = CATEGORIES.filter(cat => catMap[cat] > 0)
+
+                  return (
+                    <div key={curr}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="default" className="text-xs px-2 py-0.5">{curr}</Badge>
+                        {exchInfo && <span className="text-xs text-zinc-400">1 {curr} = {exchInfo.rate} {exchInfo.base}</span>}
+                      </div>
+                      <table className="w-full text-sm">
+                        <tbody>
+                          {activeCats.map(cat => {
+                            const amt = catMap[cat]
+                            return (
+                              <tr key={cat} className="border-b border-zinc-50">
+                                <td className="py-1.5 text-zinc-500 pl-2">個人費用 · {cat}</td>
+                                <td className="py-1.5 text-right text-zinc-700">
+                                  {amt.toFixed(dp)}
+                                  {exchInfo && (
+                                    <span className="text-xs text-zinc-400 ml-1">≈{(amt * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          {privTotal > 0 && activeCats.length > 1 && (
+                            <tr className="border-b border-zinc-100">
+                              <td className="py-1.5 text-zinc-500 pl-2 font-medium">個人小計</td>
+                              <td className="py-1.5 text-right font-medium text-zinc-700">
+                                {privTotal.toFixed(dp)}
+                                {exchInfo && (
+                                  <span className="text-xs text-zinc-400 ml-1">≈{(privTotal * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                          {owed > 0 && (
+                            <tr className="border-b border-zinc-50">
+                              <td className="py-1.5 text-zinc-500 pl-2">共同分攤（應付）</td>
+                              <td className="py-1.5 text-right text-zinc-700">
+                                {owed.toFixed(dp)}
+                                {exchInfo && (
+                                  <span className="text-xs text-zinc-400 ml-1">≈{(owed * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                          <tr>
+                            <td className="pt-2 font-semibold text-zinc-900 pl-2">合計</td>
+                            <td className="pt-2 text-right font-semibold text-zinc-900">
+                              {total.toFixed(dp)}
+                              {exchInfo && (
+                                <span className="text-xs text-zinc-400 ml-1">≈{(total * exchInfo.rate).toFixed(baseDp)} {exchInfo.base}</span>
+                              )}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>

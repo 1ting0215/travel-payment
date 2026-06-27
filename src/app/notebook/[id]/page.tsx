@@ -65,6 +65,7 @@ export default function NotebookPage() {
   const [currenciesOpen, setCurrenciesOpen] = useState(false)
   const [editingCurrencyCode, setEditingCurrencyCode] = useState<string | null>(null)
   const [editingRate, setEditingRate] = useState('')
+  const [editingDecimals, setEditingDecimals] = useState('2')
   const [savingRate, setSavingRate] = useState(false)
   const [newCurrencyCode, setNewCurrencyCode] = useState('')
   const [newCurrencyRate, setNewCurrencyRate] = useState('')
@@ -198,12 +199,13 @@ export default function NotebookPage() {
   async function handleSaveRate(code: string) {
     const rate = parseFloat(editingRate)
     if (isNaN(rate) || rate <= 0) return
+    const dp = parseInt(editingDecimals) || 0
     setSavingRate(true)
     try {
       const res = await fetch(`/api/notebooks/${id}/currencies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, exchange_rate: rate, base_currency: 'TWD' }),
+        body: JSON.stringify({ code, exchange_rate: rate, base_currency: 'TWD', decimal_places: dp }),
       })
       if (res.ok) {
         setData(prev => {
@@ -211,12 +213,13 @@ export default function NotebookPage() {
           return {
             ...prev,
             currencies: prev.currencies.map(c =>
-              c.code === code ? { ...c, exchange_rate: rate, base_currency: 'TWD' } : c
+              c.code === code ? { ...c, exchange_rate: rate, base_currency: 'TWD', decimal_places: dp } : c
             ),
           }
         })
         setEditingCurrencyCode(null)
         setEditingRate('')
+        setEditingDecimals('2')
       }
     } finally {
       setSavingRate(false)
@@ -376,11 +379,24 @@ export default function NotebookPage() {
                       />
                       <span className="text-sm text-zinc-500 shrink-0">TWD</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-zinc-500 shrink-0">小數位數</label>
+                      <select
+                        value={editingDecimals}
+                        onChange={e => setEditingDecimals(e.target.value)}
+                        className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-sm"
+                      >
+                        <option value="0">0（整數）</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                      </select>
+                    </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => handleSaveRate(c.code)} disabled={savingRate}>
                         {savingRate ? '…' : '儲存'}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => { setEditingCurrencyCode(null); setEditingRate('') }}>
+                      <Button size="sm" variant="ghost" onClick={() => { setEditingCurrencyCode(null); setEditingRate(''); setEditingDecimals('2') }}>
                         取消
                       </Button>
                     </div>
@@ -391,6 +407,7 @@ export default function NotebookPage() {
                       {c.exchange_rate
                         ? `1 ${c.code} = ${c.exchange_rate} TWD`
                         : '未設匯率'}
+                      {` · ${c.decimal_places ?? 2}位小數`}
                     </span>
                     <Button
                       size="sm"
@@ -398,9 +415,10 @@ export default function NotebookPage() {
                       onClick={() => {
                         setEditingCurrencyCode(c.code)
                         setEditingRate(c.exchange_rate ? String(c.exchange_rate) : '')
+                        setEditingDecimals(String(c.decimal_places ?? 2))
                       }}
                     >
-                      編輯匯率
+                      編輯
                     </Button>
                   </>
                 )}

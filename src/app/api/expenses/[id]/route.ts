@@ -26,13 +26,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params
     const body = await request.json()
-    const { title, date, amount, currency, payer, split_method, splits, notes, visibility, receipt_url } = body
+    const { title, date, amount, currency, payer, split_method, splits, notes, visibility, receipt_url, category } = body
 
     const supabase = createClient()
 
     const { error: updateError } = await supabase
       .from('tp_expenses')
-      .update({ title, date, amount, currency, payer, split_method, notes: notes ?? null, visibility, receipt_url: receipt_url ?? null })
+      .update({ title, date, amount, currency, payer, split_method, notes: notes ?? null, visibility, receipt_url: receipt_url ?? null, category: category || null })
       .eq('id', id)
 
     if (updateError) {

@@ -50,6 +50,7 @@ export default function EditExpensePage() {
   const [visibility, setVisibility] = useState<Visibility>('shared')
   const [splitMethod, setSplitMethod] = useState<SplitMethod>('equal')
   const [splits, setSplits] = useState<SplitEntry[]>([])
+  const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
   const [receipt, setReceipt] = useState<File | null>(null)
   const [existingReceiptUrl, setExistingReceiptUrl] = useState<string | null>(null)
@@ -87,6 +88,7 @@ export default function EditExpensePage() {
       setPayer(expense.payer)
       setVisibility(expense.visibility)
       setSplitMethod(expense.split_method)
+      setCategory(expense.category ?? '')
       setNotes(expense.notes ?? '')
       setExistingReceiptUrl(expense.receipt_url)
 
@@ -256,6 +258,7 @@ export default function EditExpensePage() {
           splits: activeSplits,
           notes: notes.trim() || null,
           visibility,
+          category: category || null,
           receipt_url: receiptUrl,
         }),
       })
@@ -518,6 +521,26 @@ export default function EditExpensePage() {
         {/* Notes & Receipt */}
         <Card>
           <CardContent className="pt-4 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-zinc-700">費用分類（選填）</label>
+              <div className="flex gap-2 flex-wrap">
+                {['', '食', '住', '行', '其他'].map(opt => (
+                  <button
+                    key={opt || '無'}
+                    type="button"
+                    onClick={() => setCategory(opt)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      category === opt
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-zinc-600 border-zinc-200 hover:border-indigo-300'
+                    }`}
+                  >
+                    {opt || '無'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-zinc-700">備註（選填）</label>
               <textarea
