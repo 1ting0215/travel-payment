@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<RemittanceStatus, string> = {
 const STATUS_BUTTON: Record<RemittanceStatus, string> = {
   unpaid: '付款者標記 已付款',
   paid: '收款者已確認入帳',
-  confirmed: '取消確認（返回已付款）',
+  confirmed: '收款者取消確認（返回狀態已付款）',
 }
 
 const STATUS_NEXT: Record<RemittanceStatus, RemittanceStatus> = {
